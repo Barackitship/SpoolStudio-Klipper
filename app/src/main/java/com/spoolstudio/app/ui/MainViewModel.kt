@@ -47,6 +47,10 @@ class MainViewModel : ViewModel() {
         private set
     var showSettings by mutableStateOf(false)
         private set
+    var connectionProfiles by mutableStateOf<List<ConnectionProfile>>(emptyList())
+        private set
+    var activeConnectionProfileId by mutableStateOf("")
+        private set
     var spoolmanUrl by mutableStateOf("")
         private set
     var moonrakerUrl by mutableStateOf("")
@@ -408,6 +412,8 @@ class MainViewModel : ViewModel() {
         context: Context,
         newUrl: String,
         newMoonrakerUrl: String,
+        newConnectionProfiles: List<ConnectionProfile>,
+        newActiveConnectionProfileId: String,
         newPrinterIntegrationMode: PrinterIntegrationMode,
         newSort: String,
         newBambuMasterKey: String,
@@ -417,6 +423,8 @@ class MainViewModel : ViewModel() {
             SettingsSaveInput(
                 spoolmanUrl = newUrl,
                 moonrakerUrl = newMoonrakerUrl,
+                connectionProfiles = newConnectionProfiles,
+                activeConnectionProfileId = newActiveConnectionProfileId,
                 printerIntegrationMode = newPrinterIntegrationMode,
                 spoolmanSortBy = newSort,
                 bambuMasterKey = newBambuMasterKey,
@@ -424,6 +432,8 @@ class MainViewModel : ViewModel() {
             )
         )
 
+        connectionProfiles = settings.connectionProfiles
+        activeConnectionProfileId = settings.activeConnectionProfileId
         spoolmanUrl = settings.spoolmanUrl
         moonrakerUrl = settings.moonrakerUrl
         printerIntegrationMode = settings.printerIntegrationMode
@@ -436,6 +446,8 @@ class MainViewModel : ViewModel() {
             context = context,
             spoolmanUrl = settings.spoolmanUrl,
             moonrakerUrl = settings.moonrakerUrl,
+            connectionProfiles = settings.connectionProfiles,
+            activeConnectionProfileId = settings.activeConnectionProfileId,
             printerIntegrationMode = settings.printerIntegrationMode,
             spoolmanSortBy = settings.spoolmanSortBy,
             bambuMasterKey = settings.bambuMasterKey,
@@ -453,6 +465,8 @@ class MainViewModel : ViewModel() {
         showLotNumber = state.showLotNumber
         showCommentField = state.showCommentField
         showEmptySpoolWeight = state.showEmptySpoolWeight
+        connectionProfiles = state.connectionProfiles
+        activeConnectionProfileId = state.activeConnectionProfileId
         spoolmanUrl = state.spoolmanUrl
         spoolmanSortBy = state.spoolmanSortBy
         moonrakerUrl = state.moonrakerUrl

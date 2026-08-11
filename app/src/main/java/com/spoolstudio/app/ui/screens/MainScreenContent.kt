@@ -42,6 +42,8 @@ fun MainScreenContent(
         SettingsScreen(
             spoolmanUrl = viewModel.spoolmanUrl,
             moonrakerUrl = viewModel.moonrakerUrl,
+            connectionProfiles = viewModel.connectionProfiles,
+            activeConnectionProfileId = viewModel.activeConnectionProfileId,
             bambuMasterKey = viewModel.bambuMasterKey,
             spoolmanSortBy = viewModel.spoolmanSortBy,
             snackbarMessage = viewModel.snackbarMessage,
@@ -105,11 +107,13 @@ fun MainScreenContent(
             moonrakerStatus = viewModel.moonrakerStatus,
             moonrakerError = viewModel.moonrakerError,
             isTestingMoonraker = viewModel.isTestingMoonraker,
-            onSave = { newUrl, newMoonrakerUrl, newPrinterIntegrationMode, newSort, newBambuKey, newShowCommentField ->
+            onSave = { newUrl, newMoonrakerUrl, newConnectionProfiles, newActiveConnectionProfileId, newPrinterIntegrationMode, newSort, newBambuKey, newShowCommentField ->
                 viewModel.handleSettingsSave(
                     context,
                     newUrl,
                     newMoonrakerUrl,
+                    newConnectionProfiles,
+                    newActiveConnectionProfileId,
                     newPrinterIntegrationMode,
                     newSort,
                     newBambuKey,

@@ -58,12 +58,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spoolstudio.app.ui.components.CustomSnackbar
 import com.spoolstudio.app.ui.components.SpoolStudioLogo
+import com.spoolstudio.app.ui.ConnectionProfile
 import com.spoolstudio.app.ui.PrinterIntegrationMode
 import com.spoolstudio.app.ui.theme.SpoolStudioColors
 import com.spoolstudio.app.ui.theme.SpoolStudioShape
 import com.spoolstudio.app.ui.theme.spoolStudioBackground
 import androidx.compose.ui.window.Dialog
 import com.spoolstudio.app.data.remote.spoolman.SpoolmanLegacyFilamentConversion
+import java.util.UUID
 
 private enum class LegacyConversionSortMode(val label: String) {
     SPOOL_ID("Spool ID"),
@@ -76,6 +78,8 @@ private enum class LegacyConversionSortMode(val label: String) {
 fun SettingsScreen(
     spoolmanUrl: String,
     moonrakerUrl: String,
+    connectionProfiles: List<ConnectionProfile>,
+    activeConnectionProfileId: String,
     bambuMasterKey: String,
     showCommentField: Boolean,
     showEmptySpoolWeight: Boolean,
@@ -113,7 +117,7 @@ fun SettingsScreen(
     onClearLegacyFilamentConversions: () -> Unit,
     onConvertLegacyFilaments: (String, Set<Int>) -> Unit,
     onTestMoonrakerConnection: (String) -> Unit,
-    onSave: (String, String, PrinterIntegrationMode, String, String, Boolean) -> Unit,
+    onSave: (String, String, List<ConnectionProfile>, String, PrinterIntegrationMode, String, String, Boolean) -> Unit,
     spoolmanStatus: String? = null,
     spoolmanError: String? = null,
     moonrakerStatus: String? = null,
@@ -127,8 +131,51 @@ fun SettingsScreen(
     onShowEmptySpoolWeightChanged: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
-    var tempUrl by remember(spoolmanUrl) { mutableStateOf(spoolmanUrl) }
-    var tempMoonrakerUrl by remember(moonrakerUrl) { mutableStateOf(moonrakerUrl) }
+    val savedProfiles = remember(connectionProfiles, spoolmanUrl, moonrakerUrl) {
+        normalizeConnectionProfiles(connectionProfiles).ifEmpty {
+            listOf(
+                ConnectionProfile(
+                    id = "default",
+                    name = "Default",
+                    spoolmanUrl = normalizeSettingsUrl(spoolmanUrl),
+                    moonrakerUrl = normalizeMoonrakerSettingsUrl(moonrakerUrl)
+                )
+            )
+        }
+    }
+    val savedActiveProfileId = remember(savedProfiles, activeConnectionProfileId) {
+        activeConnectionProfileId
+            .takeIf { id -> savedProfiles.any { it.id == id } }
+            ?: savedProfiles.first().id
+    }
+    var tempProfiles by remember(savedProfiles) { mutableStateOf(savedProfiles) }
+    var tempActiveProfileId by remember(savedActiveProfileId, savedProfiles) {
+        mutableStateOf(savedActiveProfileId)
+    }
+    var profileExpanded by remember { mutableStateOf(false) }
+    var showRenameProfileDialog by remember { mutableStateOf(false) }
+    var showDeleteProfileDialog by remember { mutableStateOf(false) }
+    val activeProfile = tempProfiles.firstOrNull { it.id == tempActiveProfileId } ?: tempProfiles.first()
+    val tempUrl = activeProfile.spoolmanUrl
+    val tempMoonrakerUrl = activeProfile.moonrakerUrl
+    fun updateActiveProfile(
+        spoolmanUrl: String = tempUrl,
+        moonrakerUrl: String = tempMoonrakerUrl,
+        name: String = activeProfile.name
+    ) {
+        tempProfiles = tempProfiles.map { profile ->
+            if (profile.id == tempActiveProfileId) {
+                profile.copy(
+                    name = name.ifBlank { profile.name },
+                    spoolmanUrl = spoolmanUrl,
+                    moonrakerUrl = moonrakerUrl
+                )
+            } else {
+                profile
+            }
+        }
+    }
+
     var tempBambuKey by remember(bambuMasterKey) { mutableStateOf(bambuMasterKey) }
     var tempShowCommentField by remember(showCommentField) { mutableStateOf(showCommentField) }
     var tempPrinterIntegrationMode by remember(printerIntegrationMode) { mutableStateOf(printerIntegrationMode) }
@@ -177,6 +224,10 @@ fun SettingsScreen(
         savedSpoolmanUrl = spoolmanUrl,
         tempMoonrakerUrl = tempMoonrakerUrl,
         savedMoonrakerUrl = moonrakerUrl,
+        tempConnectionProfiles = tempProfiles,
+        savedConnectionProfiles = savedProfiles,
+        tempActiveConnectionProfileId = tempActiveProfileId,
+        savedActiveConnectionProfileId = savedActiveProfileId,
         tempPrinterIntegrationMode = tempPrinterIntegrationMode,
         savedPrinterIntegrationMode = printerIntegrationMode,
         tempSort = tempSort,
@@ -203,11 +254,66 @@ fun SettingsScreen(
         ) {
             SettingsTopBar(onBack = onBack)
 
+            SettingsPanel(title = "Connection profile") {
+                SettingsConnectionProfileDropdown(
+                    profiles = tempProfiles,
+                    selectedProfileId = tempActiveProfileId,
+                    expanded = profileExpanded,
+                    onExpandedChange = { profileExpanded = !profileExpanded },
+                    onProfileSelected = { profileId ->
+                        tempActiveProfileId = profileId
+                        profileExpanded = false
+                        onClearSpoolmanStatus()
+                        onClearMoonrakerStatus()
+                    }
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SettingsSecondaryButton(
+                        text = "New",
+                        onClick = {
+                            val newIndex = tempProfiles.size + 1
+                            val newProfile = ConnectionProfile(
+                                id = "profile-${UUID.randomUUID()}",
+                                name = "Profile $newIndex",
+                                spoolmanUrl = "",
+                                moonrakerUrl = ""
+                            )
+                            tempProfiles = tempProfiles + newProfile
+                            tempActiveProfileId = newProfile.id
+                            onClearSpoolmanStatus()
+                            onClearMoonrakerStatus()
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SettingsSecondaryButton(
+                        text = "Rename",
+                        onClick = { showRenameProfileDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SettingsSecondaryButton(
+                        text = "Delete",
+                        enabled = tempProfiles.size > 1,
+                        onClick = { showDeleteProfileDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Text(
+                    text = "The URL fields below always belong to the selected profile.",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    color = SpoolStudioColors.OnGraphiteMuted
+                )
+            }
+
             SettingsPanel(title = "Spoolman") {
                 SettingsTextField(
                     value = tempUrl,
                     onValueChange = {
-                        tempUrl = it
+                        updateActiveProfile(spoolmanUrl = it)
                         onClearSpoolmanStatus()
                     },
                     label = "Spoolman URL",
@@ -245,7 +351,7 @@ fun SettingsScreen(
                     onClick = {
                         spoolmanTestTriggeredManually = true
                         val normalizedSpoolmanUrl = normalizeSettingsUrl(tempUrl)
-                        tempUrl = normalizedSpoolmanUrl
+                        updateActiveProfile(spoolmanUrl = normalizedSpoolmanUrl)
                         onTestSpoolmanConnection(normalizedSpoolmanUrl)
                         lastTestedSpoolmanUrl = normalizedSpoolmanUrl
                     }
@@ -281,7 +387,7 @@ fun SettingsScreen(
                         isCreating = isCreatingMaterialModifierField,
                         onCreate = {
                             val normalizedSpoolmanUrl = normalizeSettingsUrl(tempUrl)
-                            tempUrl = normalizedSpoolmanUrl
+                            updateActiveProfile(spoolmanUrl = normalizedSpoolmanUrl)
                             onCreateMaterialModifierField(normalizedSpoolmanUrl)
                         }
                     )
@@ -295,7 +401,7 @@ fun SettingsScreen(
                         enabled = !isScanningLegacyFilaments && !isConvertingLegacyFilaments,
                         onClick = {
                             val normalizedSpoolmanUrl = normalizeSettingsUrl(tempUrl)
-                            tempUrl = normalizedSpoolmanUrl
+                            updateActiveProfile(spoolmanUrl = normalizedSpoolmanUrl)
                             onScanLegacyFilamentConversions(normalizedSpoolmanUrl)
                         }
                     )
@@ -306,7 +412,7 @@ fun SettingsScreen(
                 SettingsTextField(
                     value = tempMoonrakerUrl,
                     onValueChange = {
-                        tempMoonrakerUrl = it
+                        updateActiveProfile(moonrakerUrl = it)
                         onClearMoonrakerStatus()
                     },
                     label = "Moonraker URL",
@@ -333,7 +439,7 @@ fun SettingsScreen(
                     onClick = {
                         moonrakerTestTriggeredManually = true
                         val normalizedMoonrakerUrl = normalizeMoonrakerSettingsUrl(tempMoonrakerUrl)
-                        tempMoonrakerUrl = normalizedMoonrakerUrl
+                        updateActiveProfile(moonrakerUrl = normalizedMoonrakerUrl)
                         onTestMoonrakerConnection(normalizedMoonrakerUrl)
                         lastTestedMoonrakerUrl = normalizedMoonrakerUrl
                     }
@@ -422,6 +528,8 @@ fun SettingsScreen(
                         onSave(
                             normalizeSettingsUrl(tempUrl),
                             normalizeMoonrakerSettingsUrl(tempMoonrakerUrl),
+                            normalizeConnectionProfiles(tempProfiles),
+                            tempActiveProfileId,
                             tempPrinterIntegrationMode,
                             normalizeSettingsSort(tempSort),
                             tempBambuKey,
@@ -456,11 +564,147 @@ fun SettingsScreen(
                 },
                 onConvert = { selectedIds ->
                     val normalizedSpoolmanUrl = normalizeSettingsUrl(tempUrl)
-                    tempUrl = normalizedSpoolmanUrl
+                    updateActiveProfile(spoolmanUrl = normalizedSpoolmanUrl)
                     onConvertLegacyFilaments(normalizedSpoolmanUrl, selectedIds)
                     showLegacyConversionDialog = false
                 }
             )
+        }
+
+        if (showRenameProfileDialog) {
+            ConnectionProfileNameDialog(
+                title = "Rename profile",
+                initialName = activeProfile.name,
+                confirmText = "Rename",
+                onDismiss = { showRenameProfileDialog = false },
+                onConfirm = { newName ->
+                    updateActiveProfile(name = newName)
+                    showRenameProfileDialog = false
+                }
+            )
+        }
+
+        if (showDeleteProfileDialog) {
+            DeleteConnectionProfileDialog(
+                profileName = activeProfile.name,
+                onDismiss = { showDeleteProfileDialog = false },
+                onConfirm = {
+                    val remainingProfiles = tempProfiles.filterNot { it.id == tempActiveProfileId }
+                    if (remainingProfiles.isNotEmpty()) {
+                        tempProfiles = remainingProfiles
+                        tempActiveProfileId = remainingProfiles.first().id
+                        onClearSpoolmanStatus()
+                        onClearMoonrakerStatus()
+                    }
+                    showDeleteProfileDialog = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConnectionProfileNameDialog(
+    title: String,
+    initialName: String,
+    confirmText: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember(initialName) { mutableStateOf(initialName) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = SpoolStudioShape.Dialog,
+            colors = CardDefaults.cardColors(containerColor = SpoolStudioColors.Graphite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            border = BorderStroke(1.dp, SpoolStudioColors.GraphiteMuted.copy(alpha = 0.85f))
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = SpoolStudioColors.OnGraphite
+                )
+
+                SettingsTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = "Name"
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SettingsSecondaryButton(
+                        text = "Cancel",
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SettingsPrimaryButton(
+                        text = confirmText,
+                        enabled = name.isNotBlank(),
+                        onClick = { onConfirm(name.trim()) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteConnectionProfileDialog(
+    profileName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = SpoolStudioShape.Dialog,
+            colors = CardDefaults.cardColors(containerColor = SpoolStudioColors.Graphite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            border = BorderStroke(1.dp, SpoolStudioColors.GraphiteMuted.copy(alpha = 0.85f))
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Delete profile?",
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = SpoolStudioColors.OnGraphite
+                )
+                Text(
+                    text = "Delete \"$profileName\" from the local app settings. Spoolman and printer data are not changed.",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp),
+                    color = SpoolStudioColors.OnGraphiteMuted
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SettingsSecondaryButton(
+                        text = "Cancel",
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SettingsPrimaryButton(
+                        text = "Delete",
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }

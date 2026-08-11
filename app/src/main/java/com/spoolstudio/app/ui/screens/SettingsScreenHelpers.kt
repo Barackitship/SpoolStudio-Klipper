@@ -1,5 +1,6 @@
 package com.spoolstudio.app.ui.screens
 
+import com.spoolstudio.app.ui.ConnectionProfile
 import com.spoolstudio.app.ui.PrinterIntegrationMode
 
 fun normalizeSettingsUrl(url: String): String {
@@ -44,6 +45,10 @@ fun hasSettingsChanges(
     savedSpoolmanUrl: String,
     tempMoonrakerUrl: String,
     savedMoonrakerUrl: String,
+    tempConnectionProfiles: List<ConnectionProfile>,
+    savedConnectionProfiles: List<ConnectionProfile>,
+    tempActiveConnectionProfileId: String,
+    savedActiveConnectionProfileId: String,
     tempPrinterIntegrationMode: PrinterIntegrationMode,
     savedPrinterIntegrationMode: PrinterIntegrationMode,
     tempSort: String,
@@ -55,11 +60,25 @@ fun hasSettingsChanges(
 ): Boolean {
     return normalizeSettingsUrl(tempSpoolmanUrl) != normalizeSettingsUrl(savedSpoolmanUrl) ||
         normalizeMoonrakerSettingsUrl(tempMoonrakerUrl) != normalizeMoonrakerSettingsUrl(savedMoonrakerUrl) ||
+        normalizeConnectionProfiles(tempConnectionProfiles) != normalizeConnectionProfiles(savedConnectionProfiles) ||
+        tempActiveConnectionProfileId != savedActiveConnectionProfileId ||
         tempPrinterIntegrationMode != savedPrinterIntegrationMode ||
         normalizeSettingsSort(tempSort) != normalizeSettingsSort(savedSort) ||
         tempBambuKey.trim().uppercase() != savedBambuKey.trim().uppercase() ||
         tempShowCommentField != savedShowCommentField
 }
+
+fun normalizeConnectionProfiles(profiles: List<ConnectionProfile>): List<ConnectionProfile> =
+    profiles
+        .filter { it.id.isNotBlank() }
+        .mapIndexed { index, profile ->
+            profile.copy(
+                name = profile.name.ifBlank { "Profile ${index + 1}" },
+                spoolmanUrl = normalizeSettingsUrl(profile.spoolmanUrl),
+                moonrakerUrl = normalizeMoonrakerSettingsUrl(profile.moonrakerUrl)
+            )
+        }
+        .distinctBy { it.id }
 
 fun runUrlRetestIfNeeded(
     currentValue: String,

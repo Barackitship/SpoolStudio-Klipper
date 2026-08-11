@@ -32,9 +32,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.spoolstudio.app.ui.ConnectionProfile
 import com.spoolstudio.app.ui.PrinterIntegrationMode
 import com.spoolstudio.app.ui.theme.SpoolStudioColors
 import com.spoolstudio.app.ui.theme.SpoolStudioShape
+
+@Composable
+fun SettingsConnectionProfileDropdown(
+    profiles: List<ConnectionProfile>,
+    selectedProfileId: String,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
+    onProfileSelected: (String) -> Unit
+) {
+    SettingsOptionDropdown(
+        label = "Active profile",
+        options = profiles.map { it.name to it.id },
+        selectedValue = selectedProfileId,
+        fallbackLabel = profiles.firstOrNull()?.name ?: "Default",
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        onOptionSelected = onProfileSelected
+    )
+}
 
 @Composable
 fun SettingsSortDropdown(
