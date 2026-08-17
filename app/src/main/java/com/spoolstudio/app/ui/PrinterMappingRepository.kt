@@ -1,6 +1,7 @@
 package com.spoolstudio.app.ui
 
 import com.spoolstudio.app.data.remote.moonraker.MoonrakerService
+import com.spoolstudio.app.data.remote.moonraker.MoonrakerToolheadStatus
 
 data class PrinterMappingSnapshot(
     val toolhead1SpoolId: Int?,
@@ -8,8 +9,32 @@ data class PrinterMappingSnapshot(
     val toolhead3SpoolId: Int?,
     val toolhead4SpoolId: Int?,
     val activeSpoolId: Int?,
-    val integrationMode: ResolvedPrinterIntegrationMode
+    val integrationMode: ResolvedPrinterIntegrationMode,
+    val toolheadStatuses: List<PrinterToolheadLiveStatus> = emptyList()
 )
+
+data class PrinterToolheadLiveStatus(
+    val toolheadIndex: Int,
+    val spoolId: Int?,
+    val isLoaded: Boolean,
+    val material: String?,
+    val variant: String?,
+    val brand: String?,
+    val filamentName: String?,
+    val colorHex: String?
+) {
+    val displayTitle: String
+        get() = filamentName
+            ?: listOfNotNull(brand, material, variant)
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
+                .ifBlank { "Filament loaded" }
+
+    val displaySubtitle: String
+        get() = listOfNotNull(brand, material, variant)
+            .filter { it.isNotBlank() }
+            .joinToString(" / ")
+}
 
 data class PrinterMappingLoadResult(
     val snapshot: PrinterMappingSnapshot,
@@ -25,10 +50,10 @@ class PrinterMappingRepository(
     ): PrinterMappingLoadResult {
         val service = serviceFactory(baseUrl)
         ensureSpoolLinkFirmware(service)
-        val mapping = service.getSpoolLinkToolMapping()
+        val toolheadStatuses = service.getSpoolLinkToolheadStatuses()
 
         return PrinterMappingLoadResult(
-            snapshot = mapping.toPrinterMappingSnapshot(
+            snapshot = toolheadStatuses.toPrinterMappingSnapshot(
                 activeSpoolId = null,
                 integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
             ),
@@ -53,7 +78,7 @@ class PrinterMappingRepository(
         service.setSpoolLinkToolSpool(2, toolhead3SpoolId)
         service.setSpoolLinkToolSpool(3, toolhead4SpoolId)
 
-        return service.getSpoolLinkToolMapping()
+        return service.getSpoolLinkToolheadStatuses()
             .toPrinterMappingSnapshot(
                 activeSpoolId = null,
                 integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
@@ -68,9 +93,9 @@ class PrinterMappingRepository(
     ): PrinterMappingSnapshot {
         val service = serviceFactory(baseUrl)
         ensureSpoolLinkFirmware(service)
-        val mapping = service.setSpoolLinkToolSpool(toolheadIndex, spoolId)
+        service.setSpoolLinkToolSpool(toolheadIndex, spoolId)
 
-        return mapping
+        return service.getSpoolLinkToolheadStatuses()
             .toPrinterMappingSnapshot(
                 activeSpoolId = null,
                 integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
@@ -110,3 +135,32 @@ private fun Map<String, Int?>.toPrinterMappingSnapshot(
         activeSpoolId = activeSpoolId,
         integrationMode = integrationMode
     )
+
+private fun List<MoonrakerToolheadStatus>.toPrinterMappingSnapshot(
+    activeSpoolId: Int?,
+    integrationMode: ResolvedPrinterIntegrationMode
+): PrinterMappingSnapshot {
+    val byIndex = associateBy { it.toolheadIndex }
+    val liveStatuses = map { status ->
+        PrinterToolheadLiveStatus(
+            toolheadIndex = status.toolheadIndex,
+            spoolId = status.spoolId,
+            isLoaded = status.isLoaded,
+            material = status.material,
+            variant = status.variant,
+            brand = status.brand,
+            filamentName = status.filamentName,
+            colorHex = status.colorHex
+        )
+    }
+
+    return PrinterMappingSnapshot(
+        toolhead1SpoolId = byIndex[0]?.spoolId?.takeIf { it > 0 },
+        toolhead2SpoolId = byIndex[1]?.spoolId?.takeIf { it > 0 },
+        toolhead3SpoolId = byIndex[2]?.spoolId?.takeIf { it > 0 },
+        toolhead4SpoolId = byIndex[3]?.spoolId?.takeIf { it > 0 },
+        activeSpoolId = activeSpoolId,
+        integrationMode = integrationMode,
+        toolheadStatuses = liveStatuses
+    )
+}

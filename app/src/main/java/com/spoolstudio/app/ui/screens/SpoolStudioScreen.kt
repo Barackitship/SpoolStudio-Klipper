@@ -34,6 +34,7 @@ import com.spoolstudio.app.domain.models.FilamentSpool
 import com.spoolstudio.app.domain.models.OpenSpoolData
 import com.spoolstudio.app.ui.PendingTagConversion
 import com.spoolstudio.app.ui.PrinterIntegrationMode
+import com.spoolstudio.app.ui.PrinterToolheadLiveStatus
 import com.spoolstudio.app.ui.ResolvedPrinterIntegrationMode
 import com.spoolstudio.app.ui.SpoolMode
 import com.spoolstudio.app.ui.SpoolmanSaveRequest
@@ -80,6 +81,7 @@ fun SpoolStudioScreen(
     printerTool2SpoolId: Int? = null,
     printerTool3SpoolId: Int? = null,
     printerTool4SpoolId: Int? = null,
+    printerToolheadStatuses: List<PrinterToolheadLiveStatus> = emptyList(),
     printerIntegrationMode: PrinterIntegrationMode = PrinterIntegrationMode.PAXX12_SPOOL_LINK,
     resolvedPrinterIntegrationMode: ResolvedPrinterIntegrationMode? = null,
     isLoadingPrinterMapping: Boolean = false,
@@ -338,6 +340,7 @@ fun SpoolStudioScreen(
             toolhead2SpoolId = printerTool2SpoolId,
             toolhead3SpoolId = printerTool3SpoolId,
             toolhead4SpoolId = printerTool4SpoolId,
+            toolheadStatuses = printerToolheadStatuses,
             onCancel = {
                 onClearPrinterMappingDialogFeedback()
                 showPrinterMappingDialog = false

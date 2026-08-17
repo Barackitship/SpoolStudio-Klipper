@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.spoolstudio.app.domain.models.FilamentSpool
 import com.spoolstudio.app.domain.models.displayMaterialWithModifier
+import com.spoolstudio.app.ui.PrinterToolheadLiveStatus
 import com.spoolstudio.app.ui.components.SpoolStudioLogo
 import com.spoolstudio.app.ui.theme.SpoolStudioColors
 import com.spoolstudio.app.ui.theme.SpoolStudioShape
@@ -38,16 +39,23 @@ import com.spoolstudio.app.ui.theme.SpoolStudioShape
 fun MappingToolheadStatusCard(
     label: String,
     spool: FilamentSpool?,
+    liveStatus: PrinterToolheadLiveStatus? = null,
     showAppComposedData: Boolean = true,
     assignEnabled: Boolean = true,
     onAssignClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val accentColor = resolveSpoolColor(spool?.colorHex)
+    val liveOnlyStatus = liveStatus?.takeIf { spool == null && it.isLoaded }
+    val hasVisibleData = spool != null || liveOnlyStatus != null
+    val accentColor = resolveSpoolColor(spool?.colorHex ?: liveOnlyStatus?.colorHex)
     val title = spool?.let { it.spoolmanName?.takeIf(String::isNotBlank) ?: it.displayName }
+        ?: liveOnlyStatus?.displayTitle
         ?: "No spool assigned"
-    val subtitle = spool?.let { mappingSubtitle(it, showAppComposedData) }.orEmpty()
-    val idText = spool?.id?.let { "ID #$it" } ?: "Empty"
+    val subtitle = spool?.let { mappingSubtitle(it, showAppComposedData) }
+        ?: liveOnlyStatus?.displaySubtitle.orEmpty()
+    val idText = spool?.id?.let { "ID #$it" }
+        ?: liveOnlyStatus?.let { "No ID" }
+        ?: "Empty"
 
     Row(
         modifier = modifier
@@ -96,7 +104,7 @@ fun MappingToolheadStatusCard(
                     text = idText,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (spool != null) SpoolStudioColors.OnGraphite else SpoolStudioColors.OnGraphiteMuted,
+                    color = if (hasVisibleData) SpoolStudioColors.OnGraphite else SpoolStudioColors.OnGraphiteMuted,
                     maxLines = 1
                 )
             }
@@ -110,15 +118,25 @@ fun MappingToolheadStatusCard(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = if (spool != null) SpoolStudioColors.OnGraphite else SpoolStudioColors.OnGraphiteMuted,
+                color = if (hasVisibleData) SpoolStudioColors.OnGraphite else SpoolStudioColors.OnGraphiteMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
             Text(
-                text = subtitle.ifBlank { "Waiting for printer data" },
+                text = subtitle.ifBlank {
+                    if (liveOnlyStatus != null) {
+                        "Loaded, but no Spoolman ID reported"
+                    } else {
+                        "Waiting for printer data"
+                    }
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (subtitle.isNotBlank()) SpoolStudioColors.OnGraphiteMuted else SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.72f),
+                color = if (subtitle.isNotBlank() || liveOnlyStatus != null) {
+                    SpoolStudioColors.OnGraphiteMuted
+                } else {
+                    SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.72f)
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -131,7 +149,7 @@ fun MappingToolheadStatusCard(
                 .width(32.dp)
                 .height(70.dp)
         ) {
-            if (spool != null) {
+            if (spool != null || liveOnlyStatus?.colorHex != null) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)

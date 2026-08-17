@@ -171,6 +171,7 @@ fun MainScreenContent(
             printerTool2SpoolId = viewModel.printerTool2SpoolId,
             printerTool3SpoolId = viewModel.printerTool3SpoolId,
             printerTool4SpoolId = viewModel.printerTool4SpoolId,
+            printerToolheadStatuses = viewModel.printerToolheadStatuses,
             isLoadingPrinterMapping = viewModel.isLoadingPrinterMapping,
             onLoadCurrentPrinterMapping = { viewModel.loadCurrentPrinterMapping() },
             onAssignPrinterToolhead = { toolheadIndex, spoolId ->

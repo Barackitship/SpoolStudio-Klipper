@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.spoolstudio.app.domain.models.FilamentSpool
+import com.spoolstudio.app.ui.PrinterToolheadLiveStatus
 import com.spoolstudio.app.ui.components.filterSpoolmanDropdownFilaments
 import com.spoolstudio.app.ui.components.spoolmanDropdownListLabel
 import com.spoolstudio.app.ui.components.SpoolStudioLogo
@@ -69,6 +70,7 @@ fun PrinterMappingDialogHost(
     toolhead2SpoolId: Int?,
     toolhead3SpoolId: Int?,
     toolhead4SpoolId: Int?,
+    toolheadStatuses: List<PrinterToolheadLiveStatus>,
     onCancel: () -> Unit,
     onLoadCurrentPrinterMapping: () -> Unit,
     onAssignPrinterToolhead: (Int, Int?) -> Unit
@@ -86,6 +88,7 @@ fun PrinterMappingDialogHost(
         toolhead2SpoolId = toolhead2SpoolId,
         toolhead3SpoolId = toolhead3SpoolId,
         toolhead4SpoolId = toolhead4SpoolId,
+        toolheadStatuses = toolheadStatuses,
         onCancel = onCancel,
         onLoadCurrentPrinterMapping = onLoadCurrentPrinterMapping,
         onAssignPrinterToolhead = onAssignPrinterToolhead
@@ -104,6 +107,7 @@ fun PrinterMappingDialog(
     toolhead2SpoolId: Int?,
     toolhead3SpoolId: Int?,
     toolhead4SpoolId: Int?,
+    toolheadStatuses: List<PrinterToolheadLiveStatus>,
     onCancel: () -> Unit,
     onLoadCurrentPrinterMapping: () -> Unit,
     onAssignPrinterToolhead: (Int, Int?) -> Unit
@@ -112,12 +116,12 @@ fun PrinterMappingDialog(
     var assigningToolheadIndex by remember { mutableStateOf<Int?>(null) }
     var assignSearchQuery by remember { mutableStateOf("") }
     val toolheads = listOf(
-        "Toolhead 1" to spools.firstOrNull { it.id == toolhead1SpoolId },
-        "Toolhead 2" to spools.firstOrNull { it.id == toolhead2SpoolId },
-        "Toolhead 3" to spools.firstOrNull { it.id == toolhead3SpoolId },
-        "Toolhead 4" to spools.firstOrNull { it.id == toolhead4SpoolId }
+        ToolheadDialogRow("Toolhead 1", spools.firstOrNull { it.id == toolhead1SpoolId }, toolheadStatuses.firstOrNull { it.toolheadIndex == 0 }),
+        ToolheadDialogRow("Toolhead 2", spools.firstOrNull { it.id == toolhead2SpoolId }, toolheadStatuses.firstOrNull { it.toolheadIndex == 1 }),
+        ToolheadDialogRow("Toolhead 3", spools.firstOrNull { it.id == toolhead3SpoolId }, toolheadStatuses.firstOrNull { it.toolheadIndex == 2 }),
+        ToolheadDialogRow("Toolhead 4", spools.firstOrNull { it.id == toolhead4SpoolId }, toolheadStatuses.firstOrNull { it.toolheadIndex == 3 })
     )
-    val assignedCount = toolheads.count { it.second != null }
+    val assignedCount = toolheads.count { it.spool != null }
 
     Box(
         modifier = Modifier
@@ -260,11 +264,11 @@ fun PrinterMappingDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    toolheads.forEach { (label, spool) ->
-                        val index = toolheads.indexOfFirst { it.first == label }
+                    toolheads.forEachIndexed { index, row ->
                         MappingToolheadStatusCard(
-                            label = label,
-                            spool = spool,
+                            label = row.label,
+                            spool = row.spool,
+                            liveStatus = row.liveStatus,
                             showAppComposedData = showAppComposedData,
                             assignEnabled = isMoonrakerReachable && !isLoadingPrinterMapping,
                             onAssignClick = {
@@ -314,6 +318,12 @@ fun PrinterMappingDialog(
         }
     }
 }
+
+private data class ToolheadDialogRow(
+    val label: String,
+    val spool: FilamentSpool?,
+    val liveStatus: PrinterToolheadLiveStatus?
+)
 
 @Composable
 private fun AssignToolheadSpoolDialog(

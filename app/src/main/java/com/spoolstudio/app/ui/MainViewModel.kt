@@ -107,6 +107,8 @@ class MainViewModel : ViewModel() {
         private set
     var printerTool4SpoolId by mutableStateOf<Int?>(null)
         private set
+    var printerToolheadStatuses by mutableStateOf<List<PrinterToolheadLiveStatus>>(emptyList())
+        private set
     var activePrinterSpoolId by mutableStateOf<Int?>(null)
         private set
     var resolvedPrinterIntegrationMode by mutableStateOf<ResolvedPrinterIntegrationMode?>(null)
@@ -812,6 +814,7 @@ class MainViewModel : ViewModel() {
                         if (result.materialModifierFieldAvailable) {
                             materialModifierFieldDeclined = false
                         }
+                        loadSpoolmanFilaments(inputUrl)
                     }
 
                     is ConnectionTestResult.Failed -> {
@@ -922,13 +925,13 @@ class MainViewModel : ViewModel() {
         printerMappingOperation = null
     }
 
-    private fun loadSpoolmanFilaments() {
+    private fun loadSpoolmanFilaments(baseUrl: String = spoolmanUrl, sortBy: String = spoolmanSortBy) {
         isLoadingSpools = true
         viewModelScope.launch {
             try {
                 val catalog = spoolmanCatalogRepository.load(
-                    baseUrl = spoolmanUrl,
-                    sortBy = spoolmanSortBy,
+                    baseUrl = baseUrl,
+                    sortBy = sortBy,
                     forceRefresh = true
                 )
                 applySpoolmanCatalogState(buildSpoolmanCatalogState(catalog))
@@ -1117,6 +1120,7 @@ class MainViewModel : ViewModel() {
         printerTool2SpoolId = snapshot.toolhead2SpoolId
         printerTool3SpoolId = snapshot.toolhead3SpoolId
         printerTool4SpoolId = snapshot.toolhead4SpoolId
+        printerToolheadStatuses = snapshot.toolheadStatuses
         activePrinterSpoolId = snapshot.activeSpoolId
         resolvedPrinterIntegrationMode = snapshot.integrationMode
     }

@@ -43,8 +43,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -317,6 +320,7 @@ fun SettingsScreen(
                         onClearSpoolmanStatus()
                     },
                     label = "Spoolman URL",
+                    keepHorizontalFocus = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { focusState ->
@@ -416,6 +420,7 @@ fun SettingsScreen(
                         onClearMoonrakerStatus()
                     },
                     label = "Moonraker URL",
+                    keepHorizontalFocus = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { focusState ->
@@ -710,12 +715,14 @@ private fun DeleteConnectionProfileDialog(
 }
 
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 private fun SettingsTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    supportingText: String? = null
+    supportingText: String? = null,
+    keepHorizontalFocus: Boolean = false
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value)) }
     LaunchedEffect(value) {
@@ -758,6 +765,16 @@ private fun SettingsTextField(
                 cursorBrush = SolidColor(SpoolStudioColors.AccentCyan),
                 modifier = Modifier
                     .weight(1.75f)
+                    .then(
+                        if (keepHorizontalFocus) {
+                            Modifier.focusProperties {
+                                left = FocusRequester.Cancel
+                                right = FocusRequester.Cancel
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
                     .clipToBounds()
             )
         }

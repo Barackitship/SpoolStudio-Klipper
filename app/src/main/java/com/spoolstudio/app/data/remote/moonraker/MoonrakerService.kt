@@ -25,6 +25,17 @@ data class MoonrakerPrinterInfo(
         get() = firmwareVersion ?: softwareVersion
 }
 
+data class MoonrakerToolheadStatus(
+    val toolheadIndex: Int,
+    val spoolId: Int?,
+    val isLoaded: Boolean,
+    val material: String?,
+    val variant: String?,
+    val brand: String?,
+    val filamentName: String?,
+    val colorHex: String?
+)
+
 interface MoonrakerApi {
     @GET("server/info")
     suspend fun getServerInfo(): Response<Map<String, @JvmSuppressWildcards Any>>
@@ -162,6 +173,97 @@ class MoonrakerService(private val baseUrl: String) {
             "T2" to spoolIds.getOrNull(2).toPositiveSpoolIdOrNull(),
             "T3" to spoolIds.getOrNull(3).toPositiveSpoolIdOrNull()
         )
+    }
+
+    suspend fun getSpoolLinkToolheadStatuses(): List<MoonrakerToolheadStatus> {
+        val response = api.queryPrinterObjects(
+            mapOf(
+                "objects" to mapOf(
+                    "print_task_config" to listOf(
+                        "filament_spool_id",
+                        "filament_exist",
+                        "filament_vendor",
+                        "filament_type",
+                        "filament_sub_type",
+                        "filament_color_rgba"
+                    ),
+                    "AFC_lane E0" to listOf(
+                        "load",
+                        "prep",
+                        "tool_loaded",
+                        "material",
+                        "filament_name",
+                        "spool_id",
+                        "color",
+                        "status"
+                    ),
+                    "AFC_lane E1" to listOf(
+                        "load",
+                        "prep",
+                        "tool_loaded",
+                        "material",
+                        "filament_name",
+                        "spool_id",
+                        "color",
+                        "status"
+                    ),
+                    "AFC_lane E2" to listOf(
+                        "load",
+                        "prep",
+                        "tool_loaded",
+                        "material",
+                        "filament_name",
+                        "spool_id",
+                        "color",
+                        "status"
+                    ),
+                    "AFC_lane E3" to listOf(
+                        "load",
+                        "prep",
+                        "tool_loaded",
+                        "material",
+                        "filament_name",
+                        "spool_id",
+                        "color",
+                        "status"
+                    )
+                )
+            )
+        )
+
+        val status = response.statusOrThrow("Moonraker SpoolLink toolhead status query failed")
+        val config = status["print_task_config"] as? Map<*, *>
+
+        return (0..3).map { index ->
+            val lane = status["AFC_lane E$index"] as? Map<*, *>
+            val spoolId = config.listItem("filament_spool_id", index).toPositiveSpoolIdOrNull()
+                ?: lane.value("spool_id").toPositiveSpoolIdOrNull()
+            val material = config.listItem("filament_type", index).cleanPrinterText()
+                ?: lane.value("material").cleanPrinterText()
+            val variant = config.listItem("filament_sub_type", index).cleanPrinterText()
+            val brand = config.listItem("filament_vendor", index).cleanPrinterText()
+            val filamentName = lane.value("filament_name").cleanPrinterText()
+            val colorHex = config.listItem("filament_color_rgba", index).toPrinterColorHex()
+                ?: lane.value("color").toPrinterColorHex()
+            val isLoaded = config.listItem("filament_exist", index).toBooleanLike()
+                || lane.value("load").toBooleanLike()
+                || lane.value("prep").toBooleanLike()
+                || lane.value("tool_loaded").toBooleanLike()
+                || material != null
+                || filamentName != null
+                || spoolId != null
+
+            MoonrakerToolheadStatus(
+                toolheadIndex = index,
+                spoolId = spoolId,
+                isLoaded = isLoaded,
+                material = material,
+                variant = variant,
+                brand = brand,
+                filamentName = filamentName,
+                colorHex = colorHex
+            )
+        }
     }
 
     suspend fun setLegacyToolSpool(tool: String, spoolId: Int?) {
@@ -322,6 +424,44 @@ class MoonrakerService(private val baseUrl: String) {
 
     private fun Map<*, *>?.listValue(key: String): List<*>? =
         this?.get(key) as? List<*>
+
+    private fun Map<*, *>?.listItem(key: String, index: Int): Any? =
+        (this?.get(key) as? List<*>)?.getOrNull(index)
+
+    private fun Map<*, *>?.value(key: String): Any? =
+        this?.get(key)
+
+    private fun Any?.cleanPrinterText(): String? {
+        val value = this?.toString()?.trim() ?: return null
+        return value.takeIf {
+            it.isNotBlank() &&
+                !it.equals("NONE", ignoreCase = true) &&
+                it != "-"
+        }
+    }
+
+    private fun Any?.toBooleanLike(): Boolean =
+        when (this) {
+            is Boolean -> this
+            is Number -> toInt() != 0
+            is String -> equals("true", ignoreCase = true) || this == "1"
+            else -> false
+        }
+
+    private fun Any?.toPrinterColorHex(): String? {
+        val raw = this?.toString()
+            ?: return null
+        val normalized = raw
+            .trim()
+            .removePrefix("#")
+            .uppercase()
+        val hex = when (normalized.length) {
+            8 -> normalized.substring(0, 6)
+            6 -> normalized
+            else -> return null
+        }
+        return hex.takeUnless { it == "FFFFFF" }
+    }
 
 }
 
