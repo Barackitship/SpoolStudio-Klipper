@@ -37,12 +37,12 @@ class MoonrakerServiceTest {
     }
 
     @Test
-    fun missingSetSpoolIdReturnsPaxx12PrerequisiteMessage() {
+    fun missingAssignmentCommandReturnsPaxx12PrerequisiteMessage() {
         assertEquals(
-            "Paxx12 SET_SPOOL_ID is not available on the printer. Enable the AFC/SpoolLink firmware configuration, restart Klipper/Moonraker, then try again.",
+            "No Paxx12 toolhead assignment command is available on the printer. Enable the printer Spoolman integration, restart Klipper/Moonraker, then try again.",
             friendlyPrinterMappingError(
                 IllegalStateException(
-                    "SET_SPOOL_ID is not available on the printer. Enable the Paxx12 AFC/SpoolLink firmware configuration and restart Klipper/Moonraker."
+                    "No Paxx12 toolhead assignment command is available on the printer. Enable the printer Spoolman integration and restart Klipper/Moonraker."
                 )
             )
         )

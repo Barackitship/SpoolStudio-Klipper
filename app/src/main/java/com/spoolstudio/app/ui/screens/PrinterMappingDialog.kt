@@ -334,10 +334,13 @@ private fun AssignToolheadSpoolDialog(
     onDismiss: () -> Unit,
     onSpoolSelected: (Int?) -> Unit
 ) {
-    val paxx12Spools = remember(spools) {
-        spools.filter { spool -> spool.isPaxx12FieldFormat }
+    val assignableSpools = remember(spools) {
+        spools.sortedWith(compareBy<FilamentSpool> { it.id ?: Int.MAX_VALUE }
+            .thenBy { it.brand.lowercase() }
+            .thenBy { it.spoolmanName.orEmpty().lowercase() }
+        )
     }
-    val filteredSpools = filterSpoolmanDropdownFilaments(paxx12Spools, searchQuery)
+    val filteredSpools = filterSpoolmanDropdownFilaments(assignableSpools, searchQuery)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -392,7 +395,7 @@ private fun AssignToolheadSpoolDialog(
                     }
 
                     Text(
-                        text = "Only converted paxx12-format spools are shown. Spools without UID data can still be replaced when the printer reads an RFID tag.",
+                        text = "Manual assignment is temporary. Spools without UID data or v3 field conversion can be selected, but the printer may replace them after the next RFID read.",
                         style = MaterialTheme.typography.bodySmall,
                         color = SpoolStudioColors.OnGraphiteMuted
                     )
@@ -442,10 +445,10 @@ private fun AssignToolheadSpoolDialog(
                         if (filteredSpools.isEmpty()) {
                             item {
                                 Text(
-                                    text = if (paxx12Spools.isEmpty()) {
-                                        "No converted paxx12-format spools found."
+                                    text = if (assignableSpools.isEmpty()) {
+                                        "No Spoolman spools found."
                                     } else {
-                                        "No converted spool matches the search."
+                                        "No spool matches the search."
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = SpoolStudioColors.OnGraphiteMuted,
@@ -460,12 +463,16 @@ private fun AssignToolheadSpoolDialog(
                             }
                         }
                         items(filteredSpools) { spool ->
-                            val hasUid = spool.cardUids.isNotEmpty()
+                            val warningText = when {
+                                !spool.isPaxx12FieldFormat -> "Needs v3 conversion"
+                                spool.cardUids.isEmpty() -> "No UID stored"
+                                else -> null
+                            }
                             AssignSpoolRow(
                                 title = spool.spoolmanName?.takeIf(String::isNotBlank) ?: spool.displayName,
                                 subtitle = spoolmanDropdownListLabel(spool),
                                 idText = "ID #${spool.id}",
-                                warningText = if (hasUid) null else "No UID stored",
+                                warningText = warningText,
                                 accentColor = resolveSpoolColor(spool.colorHex),
                                 onClick = { onSpoolSelected(spool.id) }
                             )

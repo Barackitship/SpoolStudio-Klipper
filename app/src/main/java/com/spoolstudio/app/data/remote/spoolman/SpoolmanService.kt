@@ -161,16 +161,29 @@ class SpoolmanService(private val baseUrl: String) {
     private var cachedCatalog: SpoolmanCatalog? = null
     private var lastFetchTime = 0L
     private val cacheValidityMs = 30_000L
+    private val connectionConfig = spoolmanConnectionConfig(baseUrl)
     private val client = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .apply {
+            connectionConfig.authorizationHeader?.let { authHeader ->
+                addInterceptor { chain ->
+                    chain.proceed(
+                        chain.request()
+                            .newBuilder()
+                            .header("Authorization", authHeader)
+                            .build()
+                    )
+                }
+            }
+        }
         .addInterceptor(HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         })
         .build()
 
     private val api = Retrofit.Builder()
-        .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")
+        .baseUrl(connectionConfig.retrofitBaseUrl)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()

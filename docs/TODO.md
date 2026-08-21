@@ -27,6 +27,13 @@
   - `SpoolStudioScreen.kt`
   - `PrinterMappingDialog.kt`
 
+## Future features
+
+- Recreate the functionality of the printer filament page (`u1.fritz.box/filament`) inside Spool Studio:
+  - Show the current filament/toolhead state reported by the printer.
+  - Support the same relevant spool assignment/change actions exposed by the firmware page.
+  - Keep the implementation aligned with the official paxx12 firmware endpoints and G-code/macros.
+
 ## Release
 
 - Version is set to `2.0`.

@@ -16,6 +16,15 @@ class SettingsStateHelpersTest {
     fun loadStateCopiesStoredSettingsForViewModel() {
         val state = buildSettingsLoadState(
             AppSettings(
+                connectionProfiles = listOf(
+                    ConnectionProfile(
+                        id = "default",
+                        name = "Default",
+                        spoolmanUrl = "http://spoolman.local",
+                        moonrakerUrl = "http://printer.local"
+                    )
+                ),
+                activeConnectionProfileId = "default",
                 spoolmanUrl = "http://spoolman.local",
                 moonrakerUrl = "http://printer.local",
                 printerIntegrationMode = PrinterIntegrationMode.PAXX12_SPOOL_LINK,
@@ -45,6 +54,8 @@ class SettingsStateHelpersTest {
             SettingsSaveInput(
                 spoolmanUrl = " http://spoolman.local/ ",
                 moonrakerUrl = " http://printer.local/ ",
+                connectionProfiles = emptyList(),
+                activeConnectionProfileId = "",
                 printerIntegrationMode = PrinterIntegrationMode.PAXX12_SPOOL_LINK,
                 spoolmanSortBy = "name:asc",
                 bambuMasterKey = " abcd1234 ",
@@ -66,6 +77,8 @@ class SettingsStateHelpersTest {
             SettingsSaveInput(
                 spoolmanUrl = "",
                 moonrakerUrl = "",
+                connectionProfiles = emptyList(),
+                activeConnectionProfileId = "",
                 printerIntegrationMode = PrinterIntegrationMode.PAXX12_SPOOL_LINK,
                 spoolmanSortBy = " ",
                 bambuMasterKey = "",
