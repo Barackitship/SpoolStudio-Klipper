@@ -18,7 +18,7 @@ class NfcController(private val activity: Activity) {
     private val operationTimeoutHandler = Handler(Looper.getMainLooper())
     private var activeOperationId = 0
     
-    var onTagDetected: ((String?) -> Unit)? = null
+    var onTagDetected: ((NfcTagReadResult) -> Unit)? = null
     var onStatusUpdate: ((String, Boolean) -> Unit)? = null
     var onTagWritten: ((String) -> Unit)? = null
 
@@ -91,8 +91,9 @@ class NfcController(private val activity: Activity) {
                     } else if (isReadingEnabled) {
                         clearOperationTimeout()
                         // Read mode - read the tag
+                        val cardUid = it.id.toHexString(separator = "")
                         val data = nfcManager.readTag(it)
-                        onTagDetected?.invoke(data)
+                        onTagDetected?.invoke(NfcTagReadResult(data = data, cardUid = cardUid))
 
                         if (data.isNullOrBlank()) {
                             onStatusUpdate?.invoke("❌ Tag detected but no data found", false)
@@ -141,6 +142,9 @@ class NfcController(private val activity: Activity) {
     private fun showToast(message: String) {
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
     }
+
+    private fun ByteArray.toHexString(separator: String = ""): String =
+        joinToString(separator) { byte -> "%02X".format(byte) }
 
     private companion object {
         const val NFC_OPERATION_TIMEOUT_MS = 10_000L

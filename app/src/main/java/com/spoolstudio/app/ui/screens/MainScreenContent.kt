@@ -210,6 +210,11 @@ fun MainScreenContent(
             onArchiveSelectedSpool = {
                 viewModel.archiveSelectedSpool()
             },
+            lastScannedCardUid = viewModel.lastScannedCardUid,
+            isLinkingScannedUid = viewModel.isLinkingScannedUid,
+            onLinkScannedUidToSpool = { spoolId ->
+                viewModel.linkScannedUidToSpool(spoolId)
+            },
             pendingTagConversion = viewModel.pendingTagConversion,
             isConvertingTag = viewModel.isConvertingTag,
             onConfirmTagConversion = { viewModel.confirmTagConversion(context) },

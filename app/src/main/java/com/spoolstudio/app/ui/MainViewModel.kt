@@ -14,6 +14,7 @@ import com.spoolstudio.app.domain.models.FilamentSpool
 import com.spoolstudio.app.domain.models.OpenSpoolData
 import com.spoolstudio.app.domain.models.normalizeCardUid
 import com.spoolstudio.app.domain.models.spoolLinkSpoolmanFields
+import com.spoolstudio.app.hardware.nfc.NfcTagReadResult
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -127,6 +128,10 @@ class MainViewModel : ViewModel() {
         private set
     var isConvertingTag by mutableStateOf(false)
         private set
+    var lastScannedCardUid by mutableStateOf<String?>(null)
+        private set
+    var isLinkingScannedUid by mutableStateOf(false)
+        private set
 
     var spoolmanStatus by mutableStateOf<String?>(null)
         private set
@@ -205,10 +210,23 @@ class MainViewModel : ViewModel() {
             testMoonrakerConnection(moonrakerUrl)
         }
     }
-    fun handleNfcTagDetected(data: String?) {
-        Log.d("MainViewModel", "handleNfcTagDetected called with data: $data")
+    fun handleNfcTagDetected(result: NfcTagReadResult) {
+        val data = result.data
+        val physicalUid = normalizeCardUid(result.cardUid)
+        Log.d("MainViewModel", "handleNfcTagDetected called with UID: $physicalUid data: $data")
 
-        val tagData = parseNfcTagData(data)
+        if (physicalUid.isNotBlank()) {
+            lastScannedCardUid = physicalUid
+        }
+
+        val tagData = parseNfcTagData(data)?.let { parsedTag ->
+            val parsedUid = normalizeCardUid(parsedTag.readData.cardUid)
+            if (physicalUid.isNotBlank() && parsedUid.isBlank()) {
+                parsedTag.copy(readData = parsedTag.readData.copy(cardUid = physicalUid))
+            } else {
+                parsedTag
+            }
+        }
         val stateUpdate = buildNfcTagReadStateUpdate(
             rawData = data,
             currentRawReadVersion = rawReadVersion,
@@ -258,6 +276,12 @@ class MainViewModel : ViewModel() {
             }
         } else {
             Log.d("MainViewModel", "Raw RFID data is not OpenSpool JSON")
+            if (physicalUid.isNotBlank()) {
+                showSnackbarMessage(
+                    "RFID UID read. Select a Spoolman spool and use Link scanned UID to assign it.",
+                    autoDismiss = false
+                )
+            }
         }
     }
 
@@ -344,6 +368,43 @@ class MainViewModel : ViewModel() {
 
     fun preparePendingTagWriteLink() {
         pendingTagWriteSpoolId = if (spoolMode == SpoolMode.UPDATE) selectedSpool?.id else null
+    }
+
+    fun linkScannedUidToSpool(spoolId: Int) {
+        val normalizedUid = normalizeCardUid(lastScannedCardUid.orEmpty())
+        if (normalizedUid.isBlank()) {
+            showSnackbarMessage("Read an RFID tag first to capture its UID", autoDismiss = false)
+            return
+        }
+
+        if (spoolmanUrl.isBlank()) {
+            showSnackbarMessage("Please configure a Spoolman URL first", autoDismiss = false)
+            return
+        }
+
+        viewModelScope.launch {
+            isLinkingScannedUid = true
+            try {
+                SpoolmanService(spoolmanUrl).assignCardUidToSpool(spoolId, normalizedUid)
+                val refreshed = spoolmanCatalogRepository.findBySpoolId(spoolmanUrl, spoolId)
+                if (refreshed != null) {
+                    selectedSpool = refreshed
+                    currentSpoolId = refreshed.id?.toString()
+                    readData = OpenSpoolData.toOpenSpoolData(refreshed).copy(cardUid = normalizedUid)
+                    spoolMode = SpoolMode.UPDATE
+                    dataVersion++
+                }
+                loadSpoolmanFilaments()
+                showSnackbarMessage("RFID UID linked to Spoolman ID #$spoolId")
+            } catch (e: Exception) {
+                showSnackbarMessage(
+                    "UID link failed: ${e.message ?: "Unknown error"}",
+                    autoDismiss = false
+                )
+            } finally {
+                isLinkingScannedUid = false
+            }
+        }
     }
 
     fun handleNfcTagWritten(cardUid: String) {

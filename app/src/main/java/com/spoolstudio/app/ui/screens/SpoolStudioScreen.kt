@@ -106,6 +106,9 @@ fun SpoolStudioScreen(
     isArchivingSpool: Boolean = false,
     onDeleteSelectedSpool: () -> Unit = {},
     onArchiveSelectedSpool: () -> Unit = {},
+    lastScannedCardUid: String? = null,
+    isLinkingScannedUid: Boolean = false,
+    onLinkScannedUidToSpool: (Int) -> Unit = {},
     pendingTagConversion: PendingTagConversion? = null,
     isConvertingTag: Boolean = false,
     onConfirmTagConversion: () -> Unit = {},
@@ -123,6 +126,7 @@ fun SpoolStudioScreen(
     var showPrinterMappingDialog by remember { mutableStateOf(false) }
     var showDeleteSpoolDialog by remember { mutableStateOf(false) }
     var showArchiveSpoolDialog by remember { mutableStateOf(false) }
+    var showLinkScannedUidDialog by remember { mutableStateOf(false) }
     var pendingTagWritePayload by remember { mutableStateOf<String?>(null) }
 
     val isWriteActionEnabled = isWriteActionEnabled(form)
@@ -322,6 +326,10 @@ fun SpoolStudioScreen(
                         isArchiveSpoolEnabled = selectedSpool?.id != null && !isDeletingSpool && !isArchivingSpool,
                         onArchiveSelectedSpool = {
                             showArchiveSpoolDialog = true
+                        },
+                        isLinkScannedUidEnabled = !lastScannedCardUid.isNullOrBlank() && !isLinkingScannedUid,
+                        onLinkScannedUid = {
+                            showLinkScannedUidDialog = true
                         }
                     )
                 }
@@ -401,6 +409,55 @@ fun SpoolStudioScreen(
                 dismissButton = {
                     TextButton(
                         onClick = { pendingTagWritePayload = null },
+                        colors = ButtonDefaults.textButtonColors(contentColor = SpoolStudioColors.GoldSoft)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showLinkScannedUidDialog) {
+            val selectedSpoolId = selectedSpool?.id
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isLinkingScannedUid) {
+                        showLinkScannedUidDialog = false
+                    }
+                },
+                containerColor = SpoolStudioColors.Graphite,
+                title = {
+                    Text(
+                        text = "Link scanned UID",
+                        color = SpoolStudioColors.OnGraphite
+                    )
+                },
+                text = {
+                    Text(
+                        text = if (selectedSpoolId != null) {
+                            "Store UID ${lastScannedCardUid.orEmpty()} on Spoolman ID #$selectedSpoolId. The RFID tag content is not changed."
+                        } else {
+                            "Select an existing Spoolman spool first, then link UID ${lastScannedCardUid.orEmpty()}."
+                        },
+                        color = SpoolStudioColors.OnGraphiteMuted
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = selectedSpoolId != null && !isLinkingScannedUid,
+                        onClick = {
+                            selectedSpoolId?.let(onLinkScannedUidToSpool)
+                            showLinkScannedUidDialog = false
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = SpoolStudioColors.AccentCyan)
+                    ) {
+                        Text(if (isLinkingScannedUid) "Linking..." else "Link")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        enabled = !isLinkingScannedUid,
+                        onClick = { showLinkScannedUidDialog = false },
                         colors = ButtonDefaults.textButtonColors(contentColor = SpoolStudioColors.GoldSoft)
                     ) {
                         Text("Cancel")

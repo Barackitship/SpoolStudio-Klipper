@@ -41,7 +41,9 @@ fun SpoolActionSection(
     isDeleteSpoolEnabled: Boolean,
     onDeleteSelectedSpool: () -> Unit,
     isArchiveSpoolEnabled: Boolean,
-    onArchiveSelectedSpool: () -> Unit
+    onArchiveSelectedSpool: () -> Unit,
+    isLinkScannedUidEnabled: Boolean = false,
+    onLinkScannedUid: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     fun clearThen(action: () -> Unit): () -> Unit = {
@@ -62,6 +64,14 @@ fun SpoolActionSection(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ReadTagButton(onClick = clearThen(onReadTag))
+
+            if (isLinkScannedUidEnabled) {
+                SecondaryActionButton(
+                    text = "Link scanned UID",
+                    onClick = clearThen(onLinkScannedUid),
+                    enabled = true
+                )
+            }
 
             if (isCreateMode) {
                 SaveToSpoolmanButton(

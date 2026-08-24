@@ -45,8 +45,8 @@ class MainActivity : ComponentActivity() {
         nfcHandler = NfcHandler(this)
         nfcHandler.initialize()
 
-        nfcHandler.onTagDetected = { data ->
-            viewModel.handleNfcTagDetected(data)
+        nfcHandler.onTagDetected = { result ->
+            viewModel.handleNfcTagDetected(result)
         }
 
         nfcHandler.onStatusUpdate = { status, active ->

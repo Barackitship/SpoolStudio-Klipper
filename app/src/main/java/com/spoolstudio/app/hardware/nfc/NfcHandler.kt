@@ -6,7 +6,7 @@ class NfcHandler(private val activity: Activity) {
     
     private lateinit var nfcController: NfcController
     
-    var onTagDetected: ((String?) -> Unit)? = null
+    var onTagDetected: ((NfcTagReadResult) -> Unit)? = null
     var onStatusUpdate: ((String, Boolean) -> Unit)? = null
     var onTagWritten: ((String) -> Unit)? = null
 
@@ -14,8 +14,8 @@ class NfcHandler(private val activity: Activity) {
         nfcController = NfcController(activity)
         nfcController.initialize()
         
-        nfcController.onTagDetected = { data ->
-            onTagDetected?.invoke(data)
+        nfcController.onTagDetected = { result ->
+            onTagDetected?.invoke(result)
         }
         
         nfcController.onStatusUpdate = { status, active ->
