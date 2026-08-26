@@ -49,7 +49,7 @@ class PrinterMappingRepository(
         printerIntegrationMode: PrinterIntegrationMode
     ): PrinterMappingLoadResult {
         val service = serviceFactory(baseUrl)
-        ensureSpoolLinkFirmware(service)
+        ensureSpoolLinkStatusReadable(service)
         val toolheadStatuses = service.getSpoolLinkToolheadStatuses()
 
         return PrinterMappingLoadResult(
@@ -71,7 +71,7 @@ class PrinterMappingRepository(
         printerIntegrationMode: PrinterIntegrationMode
     ): PrinterMappingSnapshot {
         val service = serviceFactory(baseUrl)
-        ensureSpoolLinkFirmware(service)
+        ensureSpoolLinkStatusReadable(service)
 
         service.setSpoolLinkToolSpool(0, toolhead1SpoolId)
         service.setSpoolLinkToolSpool(1, toolhead2SpoolId)
@@ -92,7 +92,7 @@ class PrinterMappingRepository(
         printerIntegrationMode: PrinterIntegrationMode
     ): PrinterMappingSnapshot {
         val service = serviceFactory(baseUrl)
-        ensureSpoolLinkFirmware(service)
+        ensureSpoolLinkStatusReadable(service)
         service.setSpoolLinkToolSpool(toolheadIndex, spoolId)
 
         return service.getSpoolLinkToolheadStatuses()
@@ -102,7 +102,7 @@ class PrinterMappingRepository(
             )
     }
 
-    private suspend fun ensureSpoolLinkFirmware(service: MoonrakerService) {
+    private suspend fun ensureSpoolLinkStatusReadable(service: MoonrakerService) {
         val printerInfo = service.getPrinterInfo()
         if (!printerInfo.supportsSpoolLink) {
             val version = printerInfo.displayVersion ?: "unknown"
@@ -110,12 +110,7 @@ class PrinterMappingRepository(
                 "Paxx12 SpoolLink requires firmware 1.5.0 or newer. Detected firmware: $version. Use Spool Studio v2 for the old Paxx12 workflow."
             )
         }
-        if (
-            printerInfo.hasSpoolmanComponent == false ||
-            printerInfo.hasSpoolLinkComponent == false ||
-            printerInfo.spoolmanIntegrationEnabled == false ||
-            printerInfo.assignmentCommandAvailable != true
-        ) {
+        if (printerInfo.hasSpoolmanComponent == false || printerInfo.hasSpoolLinkComponent == false) {
             throw IllegalStateException(
                 "Printer Spoolman integration is not ready. Enable Spoolman Integration in the printer config, then restart Klipper/Moonraker."
             )

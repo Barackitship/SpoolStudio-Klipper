@@ -108,7 +108,6 @@ fun SettingsScreen(
     moonrakerHasSpoolmanComponent: Boolean?,
     moonrakerHasSpoolLinkComponent: Boolean?,
     moonrakerSpoolmanIntegrationEnabled: Boolean?,
-    moonrakerAssignmentCommandAvailable: Boolean?,
     moonrakerDetectedModeLabel: String?,
     legacyFilamentConversions: List<SpoolmanLegacyFilamentConversion>,
     isScanningLegacyFilaments: Boolean,
@@ -468,7 +467,6 @@ fun SettingsScreen(
                         hasSpoolmanComponent = moonrakerHasSpoolmanComponent,
                         hasSpoolLinkComponent = moonrakerHasSpoolLinkComponent,
                         spoolmanIntegrationEnabled = moonrakerSpoolmanIntegrationEnabled,
-                        assignmentCommandAvailable = moonrakerAssignmentCommandAvailable,
                         detectedModeLabel = moonrakerDetectedModeLabel
                     )
                 }
@@ -966,7 +964,6 @@ private fun SettingsMoonrakerInfoSummary(
     hasSpoolmanComponent: Boolean?,
     hasSpoolLinkComponent: Boolean?,
     spoolmanIntegrationEnabled: Boolean?,
-    assignmentCommandAvailable: Boolean?,
     detectedModeLabel: String?
 ) {
     Column(
@@ -1011,21 +1008,9 @@ private fun SettingsMoonrakerInfoSummary(
                 null -> "Not tested"
             }
         )
-        SettingsInfoRow(
-            label = "Assignment command",
-            value = when (assignmentCommandAvailable) {
-                true -> "Loaded"
-                false -> "Missing"
-                null -> "Not tested"
-            }
-        )
 
         val integrationText = when (spoolmanIntegrationEnabled) {
-            true -> if (assignmentCommandAvailable == false) {
-                "Not ready: printer assignment command is missing. Enable the printer Spoolman options and restart Klipper/Moonraker."
-            } else {
-                "Ready: printer Spoolman integration is active."
-            }
+            true -> "Ready: printer Spoolman integration is active."
             false -> "Not ready: enable Spoolman Integration in the printer config and restart Klipper/Moonraker."
             null -> "Run the Moonraker connection test to check printer Spoolman integration."
         }
@@ -1033,7 +1018,7 @@ private fun SettingsMoonrakerInfoSummary(
             text = integrationText,
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
             color = when (spoolmanIntegrationEnabled) {
-                true -> if (assignmentCommandAvailable == false) SpoolStudioColors.Error else SpoolStudioColors.Success
+                true -> SpoolStudioColors.Success
                 false -> SpoolStudioColors.Error
                 null -> SpoolStudioColors.OnGraphiteMuted
             }

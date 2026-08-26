@@ -52,11 +52,8 @@ private fun friendlyPrinterMappingError(
         rawMessage.contains("Spoolman integration is not ready", ignoreCase = true) -> {
             rawMessage
         }
-        rawMessage.contains("SET_PRINT_FILAMENT_CONFIG is not available", ignoreCase = true) -> {
-            "Paxx12 SET_PRINT_FILAMENT_CONFIG is not available on the printer. Enable the printer Spoolman integration, restart Klipper/Moonraker, then try again."
-        }
-        rawMessage.contains("No Paxx12 toolhead assignment command is available", ignoreCase = true) -> {
-            "No Paxx12 toolhead assignment command is available on the printer. Enable the printer Spoolman integration, restart Klipper/Moonraker, then try again."
+        rawMessage.contains("SpoolLink assignment command failed", ignoreCase = true) -> {
+            "Toolhead assignment could not be applied. Check the printer Spoolman integration and try again."
         }
         else -> compactPrinterError(rawMessage)
     }

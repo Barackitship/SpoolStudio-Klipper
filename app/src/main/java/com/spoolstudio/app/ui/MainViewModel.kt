@@ -155,8 +155,6 @@ class MainViewModel : ViewModel() {
         private set
     var moonrakerSpoolmanIntegrationEnabled by mutableStateOf<Boolean?>(null)
         private set
-    var moonrakerAssignmentCommandAvailable by mutableStateOf<Boolean?>(null)
-        private set
     var moonrakerDetectedModeLabel by mutableStateOf<String?>(null)
         private set
     var isTestingMoonraker by mutableStateOf(false)
@@ -800,7 +798,6 @@ class MainViewModel : ViewModel() {
         moonrakerHasSpoolmanComponent = null
         moonrakerHasSpoolLinkComponent = null
         moonrakerSpoolmanIntegrationEnabled = null
-        moonrakerAssignmentCommandAvailable = null
         moonrakerDetectedModeLabel = null
 
         val validationError = connectionTestUseCase.validationError(inputUrl)
@@ -825,7 +822,6 @@ class MainViewModel : ViewModel() {
                         moonrakerHasSpoolmanComponent = result.hasSpoolmanComponent
                         moonrakerHasSpoolLinkComponent = result.hasSpoolLinkComponent
                         moonrakerSpoolmanIntegrationEnabled = result.spoolmanIntegrationEnabled
-                        moonrakerAssignmentCommandAvailable = result.assignmentCommandAvailable
                         moonrakerDetectedModeLabel = result.detectedModeLabel
                     }
 
@@ -838,7 +834,6 @@ class MainViewModel : ViewModel() {
                         moonrakerHasSpoolmanComponent = null
                         moonrakerHasSpoolLinkComponent = null
                         moonrakerSpoolmanIntegrationEnabled = null
-                        moonrakerAssignmentCommandAvailable = null
                         moonrakerDetectedModeLabel = null
                     }
 
@@ -908,7 +903,6 @@ class MainViewModel : ViewModel() {
         moonrakerHasSpoolmanComponent = null
         moonrakerHasSpoolLinkComponent = null
         moonrakerSpoolmanIntegrationEnabled = null
-        moonrakerAssignmentCommandAvailable = null
         moonrakerDetectedModeLabel = null
     }
 

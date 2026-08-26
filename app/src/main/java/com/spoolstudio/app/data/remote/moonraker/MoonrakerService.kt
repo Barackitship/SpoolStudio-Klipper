@@ -18,8 +18,7 @@ data class MoonrakerPrinterInfo(
     val supportsSpoolLink: Boolean,
     val hasSpoolmanComponent: Boolean?,
     val hasSpoolLinkComponent: Boolean?,
-    val spoolmanIntegrationEnabled: Boolean?,
-    val assignmentCommandAvailable: Boolean?
+    val spoolmanIntegrationEnabled: Boolean?
 ) {
     val displayVersion: String?
         get() = firmwareVersion ?: softwareVersion
@@ -42,9 +41,6 @@ interface MoonrakerApi {
 
     @GET("printer/info")
     suspend fun getPrinterInfo(): Response<Map<String, @JvmSuppressWildcards Any>>
-
-    @GET("printer/gcode/help")
-    suspend fun getGcodeHelp(): Response<Map<String, @JvmSuppressWildcards Any>>
 
     @GET("machine/system_info")
     suspend fun getMachineSystemInfo(): Response<Map<String, @JvmSuppressWildcards Any>>
@@ -101,8 +97,6 @@ class MoonrakerService(private val baseUrl: String) {
             ?: productInfo.stringValue("software_version")
         val versionForFeatureGate = firmwareVersion ?: softwareVersion
         val components = moonrakerComponentState(serverInfoResult?.listValue("components"))
-        val commandStatus = runCatching { getSpoolLinkCommandStatus() }.getOrNull()
-
         return MoonrakerPrinterInfo(
             firmwareVersion = firmwareVersion,
             moonrakerVersion = serverInfoResult.stringValue("moonraker_version"),
@@ -110,20 +104,7 @@ class MoonrakerService(private val baseUrl: String) {
             supportsSpoolLink = moonrakerVersionAtLeast(versionForFeatureGate, 1, 5, 0),
             hasSpoolmanComponent = components?.hasSpoolman,
             hasSpoolLinkComponent = components?.hasSpoolLink,
-            spoolmanIntegrationEnabled = components?.integrationEnabled,
-            assignmentCommandAvailable = commandStatus?.assignmentCommandAvailable
-        )
-    }
-
-    suspend fun getSpoolLinkCommandStatus(): MoonrakerSpoolLinkCommandStatus {
-        val response = api.getGcodeHelp()
-        val commands = response.resultOrThrow("Moonraker gcode help query failed").keys
-        return MoonrakerSpoolLinkCommandStatus(
-            assignmentCommandAvailable = commands.any { command ->
-                SpoolLinkAssignmentCommand.entries.any { supportedCommand ->
-                    command.toString().equals(supportedCommand.gcode, ignoreCase = true)
-                }
-            }
+            spoolmanIntegrationEnabled = components?.integrationEnabled
         )
     }
 
@@ -288,22 +269,7 @@ class MoonrakerService(private val baseUrl: String) {
     suspend fun setSpoolLinkToolSpool(toolheadIndex: Int, spoolId: Int?): Map<String, Int?> {
         require(toolheadIndex in 0..3) { "Toolhead index must be between 0 and 3" }
         val value = spoolId ?: 0
-        val command = getAvailableSpoolLinkAssignmentCommand()
-
-        val script = when (command) {
-            SpoolLinkAssignmentCommand.PrintFilamentConfig ->
-                "${command.gcode} CONFIG_EXTRUDER=$toolheadIndex FILAMENT_SPOOL_ID=$value FORCE=1"
-            SpoolLinkAssignmentCommand.SetSpoolId ->
-                "${command.gcode} LANE=E$toolheadIndex SPOOL_ID=$value"
-        }
-        val response = api.sendGcode(
-            mapOf("script" to script)
-        )
-
-        if (!response.isSuccessful) {
-            val errorText = response.errorBody()?.string()
-            throw IllegalStateException("Moonraker SpoolLink mapping write failed (${response.code()}): $errorText")
-        }
+        sendSpoolLinkAssignmentCommand(toolheadIndex, value)
 
         val expected = value.takeIf { it > 0 }
         var latestMapping = emptyMap<String, Int?>()
@@ -326,13 +292,39 @@ class MoonrakerService(private val baseUrl: String) {
         return latestMapping
     }
 
-    private suspend fun getAvailableSpoolLinkAssignmentCommand(): SpoolLinkAssignmentCommand {
-        val response = api.getGcodeHelp()
-        val commands = response.resultOrThrow("Moonraker gcode help query failed").keys
-        return SpoolLinkAssignmentCommand.entries.firstOrNull { supportedCommand ->
-            commands.any { it.toString().equals(supportedCommand.gcode, ignoreCase = true) }
-        } ?: throw IllegalStateException(
-            "No Paxx12 toolhead assignment command is available on the printer. Enable the printer Spoolman integration and restart Klipper/Moonraker."
+    private suspend fun sendSpoolLinkAssignmentCommand(toolheadIndex: Int, spoolId: Int) {
+        val scripts = listOf(
+            "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=$toolheadIndex FILAMENT_SPOOL_ID=$spoolId FORCE=1",
+            "SET_SPOOL_ID LANE=E$toolheadIndex SPOOL_ID=$spoolId"
+        )
+        val errors = mutableListOf<String>()
+
+        for (script in scripts) {
+            val response = try {
+                api.sendGcode(mapOf("script" to script))
+            } catch (error: Exception) {
+                errors += "${script.substringBefore(' ')}: ${error.message ?: error::class.java.simpleName}"
+                continue
+            }
+
+            if (response.isSuccessful) {
+                return
+            }
+
+            val errorText = response.errorBody()?.string()?.trim()
+            errors += buildString {
+                append(script.substringBefore(' '))
+                append(" HTTP ")
+                append(response.code())
+                if (!errorText.isNullOrBlank()) {
+                    append(": ")
+                    append(errorText.take(180))
+                }
+            }
+        }
+
+        throw IllegalStateException(
+            "Moonraker SpoolLink assignment command failed. Tried SET_PRINT_FILAMENT_CONFIG and SET_SPOOL_ID. ${errors.joinToString(" | ")}"
         )
     }
 
@@ -463,15 +455,6 @@ class MoonrakerService(private val baseUrl: String) {
         return hex.takeUnless { it == "FFFFFF" }
     }
 
-}
-
-data class MoonrakerSpoolLinkCommandStatus(
-    val assignmentCommandAvailable: Boolean
-)
-
-private enum class SpoolLinkAssignmentCommand(val gcode: String) {
-    PrintFilamentConfig("SET_PRINT_FILAMENT_CONFIG"),
-    SetSpoolId("SET_SPOOL_ID")
 }
 
 internal data class MoonrakerComponentState(

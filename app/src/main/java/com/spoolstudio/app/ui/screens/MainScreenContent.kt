@@ -69,7 +69,6 @@ fun MainScreenContent(
             moonrakerHasSpoolmanComponent = viewModel.moonrakerHasSpoolmanComponent,
             moonrakerHasSpoolLinkComponent = viewModel.moonrakerHasSpoolLinkComponent,
             moonrakerSpoolmanIntegrationEnabled = viewModel.moonrakerSpoolmanIntegrationEnabled,
-            moonrakerAssignmentCommandAvailable = viewModel.moonrakerAssignmentCommandAvailable,
             moonrakerDetectedModeLabel = viewModel.moonrakerDetectedModeLabel,
             legacyFilamentConversions = viewModel.legacyFilamentConversions,
             isScanningLegacyFilaments = viewModel.isScanningLegacyFilaments,
@@ -140,8 +139,7 @@ fun MainScreenContent(
             isPrinterSpoolmanReady = viewModel.moonrakerSupportsSpoolLink == true &&
                 viewModel.moonrakerHasSpoolmanComponent == true &&
                 viewModel.moonrakerHasSpoolLinkComponent == true &&
-                viewModel.moonrakerSpoolmanIntegrationEnabled == true &&
-                viewModel.moonrakerAssignmentCommandAvailable == true,
+                viewModel.moonrakerSpoolmanIntegrationEnabled == true,
             readData = viewModel.readData,
             rawReadText = viewModel.rawReadText,
             rawReadVersion = viewModel.rawReadVersion,

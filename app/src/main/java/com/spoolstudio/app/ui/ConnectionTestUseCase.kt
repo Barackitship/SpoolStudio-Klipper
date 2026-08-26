@@ -11,7 +11,6 @@ sealed class ConnectionTestResult {
         val hasSpoolmanComponent: Boolean?,
         val hasSpoolLinkComponent: Boolean?,
         val spoolmanIntegrationEnabled: Boolean?,
-        val assignmentCommandAvailable: Boolean?,
         val detectedModeLabel: String?
     ) : ConnectionTestResult()
 
@@ -55,7 +54,6 @@ class ConnectionTestUseCase(
                 hasSpoolmanComponent = result.hasSpoolmanComponent,
                 hasSpoolLinkComponent = result.hasSpoolLinkComponent,
                 spoolmanIntegrationEnabled = result.spoolmanIntegrationEnabled,
-                assignmentCommandAvailable = result.assignmentCommandAvailable,
                 detectedModeLabel = result.detectedModeLabel
             )
         } catch (error: Exception) {
