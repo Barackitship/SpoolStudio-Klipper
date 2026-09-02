@@ -263,6 +263,7 @@ fun SpoolStudioScreen(
                         form = form,
                         spools = spools,
                         selectedSpool = selectedSpool,
+                        lastScannedCardUid = lastScannedCardUid,
                         spoolMode = spoolMode,
                         spoolmanUrl = spoolmanUrl,
                         currentSpoolId = currentSpoolId,

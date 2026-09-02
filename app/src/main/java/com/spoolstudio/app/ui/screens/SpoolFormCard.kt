@@ -101,6 +101,7 @@ fun SpoolFormCard(
     form: SpoolFormState,
     spools: List<FilamentSpool>,
     selectedSpool: FilamentSpool?,
+    lastScannedCardUid: String?,
     spoolMode: SpoolMode,
     spoolmanUrl: String,
     currentSpoolId: String?,
@@ -128,6 +129,7 @@ fun SpoolFormCard(
         SpoolHeroPanel(
             form = form,
             selectedSpool = selectedSpool,
+            lastScannedCardUid = lastScannedCardUid,
             spoolMode = spoolMode,
             spools = spools,
             spoolmanUrl = spoolmanUrl,
@@ -1688,6 +1690,7 @@ private fun adjustTemperature(value: String, delta: Int): String {
 private fun SpoolHeroPanel(
     form: SpoolFormState,
     selectedSpool: FilamentSpool?,
+    lastScannedCardUid: String?,
     spoolMode: SpoolMode,
     spools: List<FilamentSpool>,
     spoolmanUrl: String,
@@ -1761,8 +1764,11 @@ private fun SpoolHeroPanel(
 
             StatusInfoPanel(
                 newMode = isCreateMode,
-                cardUid = selectedSpool?.cardUids?.firstOrNull()
-                    ?: form.pendingCardUid.orEmpty(),
+                cardUid = resolveDisplayedCardUid(
+                    selectedSpool = selectedSpool,
+                    lastScannedCardUid = lastScannedCardUid,
+                    pendingCardUid = form.pendingCardUid
+                ),
                 firstUse = if (isCreateMode) "-" else selectedSpool?.firstUsed?.let(::formatCompactDate) ?: "-",
                 lastUse = if (isCreateMode) "-" else selectedSpool?.lastUsed?.let(::formatCompactDate) ?: "-",
                 initialWeight = initialWeight,

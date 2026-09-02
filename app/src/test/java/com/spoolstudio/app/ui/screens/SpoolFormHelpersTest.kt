@@ -22,6 +22,44 @@ class SpoolFormHelpersTest {
     }
 
     @Test
+    fun scannedUidIsDisplayedForEmptyOrUnknownTag() {
+        assertEquals(
+            "041A6434C22A81",
+            resolveDisplayedCardUid(
+                selectedSpool = null,
+                lastScannedCardUid = "04:1a:64:34:c2:2a:81",
+                pendingCardUid = null
+            )
+        )
+    }
+
+    @Test
+    fun selectedSpoolUidTakesPriorityOverScannedAndPendingValues() {
+        val selectedSpool = FilamentSpool(
+            id = 91,
+            material = "PLA",
+            variant = "Basic",
+            brand = "Generic",
+            colorHex = null,
+            minTemp = 190,
+            maxTemp = 220,
+            bedMinTemp = null,
+            bedMaxTemp = null,
+            spoolmanName = null,
+            cardUids = listOf("AABBCCDD")
+        )
+
+        assertEquals(
+            "AABBCCDD",
+            resolveDisplayedCardUid(
+                selectedSpool = selectedSpool,
+                lastScannedCardUid = "11223344",
+                pendingCardUid = "55667788"
+            )
+        )
+    }
+
+    @Test
     fun remainingWeightAcceptsBlankCommaDecimalAndPositiveValues() {
         assertTrue(isRemainingWeightValid(""))
         assertTrue(isRemainingWeightValid("123"))

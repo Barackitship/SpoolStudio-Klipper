@@ -27,6 +27,20 @@ fun resolveLocationName(location: String, customLocation: String): String =
         else -> location.trim()
     }
 
+fun resolveDisplayedCardUid(
+    selectedSpool: FilamentSpool?,
+    lastScannedCardUid: String?,
+    pendingCardUid: String?
+): String =
+    sequenceOf(
+        selectedSpool?.cardUids?.firstOrNull(),
+        lastScannedCardUid,
+        pendingCardUid
+    )
+        .map(::normalizeCardUid)
+        .firstOrNull { it.isNotBlank() }
+        .orEmpty()
+
 fun isSpoolVariantValid(variant: String): Boolean = variant != "Other"
 
 fun isSpoolBrandValid(brand: String, customBrand: String): Boolean =
