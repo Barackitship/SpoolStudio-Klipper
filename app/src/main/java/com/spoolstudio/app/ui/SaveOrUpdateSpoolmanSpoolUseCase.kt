@@ -32,7 +32,7 @@ class SaveOrUpdateSpoolmanSpoolUseCase(
         val result = saveSpool(input)
         return SaveOrUpdateSpoolmanSpoolResult.Saved(
             result = result,
-            successMessage = if (result.actionMode == SpoolMode.UPDATE) {
+            successMessage = result.tagLinkWarning ?: if (result.actionMode == SpoolMode.UPDATE) {
                 "Spoolman update complete"
             } else {
                 "Spool saved to Spoolman"

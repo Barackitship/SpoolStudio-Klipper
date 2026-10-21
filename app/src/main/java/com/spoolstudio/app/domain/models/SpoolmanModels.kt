@@ -14,7 +14,8 @@ data class SpoolmanSpool(
     val extra: Map<String, JsonElement>? = null,
     val comment: String? = null,
     val first_used: String? = null,
-    val last_used: String? = null
+    val last_used: String? = null,
+    val tags: List<com.spoolstudio.app.data.remote.spoolman.NativeTag>? = null
 )
 
 data class SpoolmanFilament(
@@ -29,7 +30,8 @@ data class SpoolmanFilament(
     val density: Float? = null,
     val diameter: Float? = null,
     val spool_weight: Float? = null,
-    val weight: Float? = null
+    val weight: Float? = null,
+    val tags: List<com.spoolstudio.app.data.remote.spoolman.NativeTag>? = null
 )
 
 data class SpoolmanVendor(

@@ -26,7 +26,8 @@ data class FilamentSpool(
     val firstUsed: String? = null,
     val lastUsed: String? = null,
     val cardUids: List<String> = emptyList(),
-    val isPaxx12FieldFormat: Boolean = false
+    val isPaxx12FieldFormat: Boolean = false,
+    val nativeTagUids: List<String> = emptyList()
 ) {
     val displayName: String
         get() = listOf(
@@ -109,16 +110,17 @@ data class FilamentSpool(
                 comment = spool.comment,
                 firstUsed = spool.first_used,
                 lastUsed = spool.last_used,
-                cardUids = parseCardUids(
+                nativeTagUids = spool.tags.orEmpty().map { it.uid },
+                cardUids = (spool.tags.orEmpty().map { it.uid } + parseCardUids(
                     spool.extra.stringValue("card_uids") ?: spool.extra.stringValue("card_uid")
-                ),
+                )).distinct(),
                 isPaxx12FieldFormat = !hasLegacyMaterialLayout && !paxx12Variant.isNullOrBlank()
             )
         }
 
         fun fromOpenSpool(spool: OpenSpoolData): FilamentSpool {
             val fields = normalizeSpoolLinkFilamentFields(spool.type, spool.subtype)
-            val spoolStudioFields = spoolLinkSpoolmanFields(fields.material, fields.variant)
+            val spoolStudioFields = spoolLinkSpoolmanFields(fields.material, fields.variant, spool.formMaterialModifier)
             val material = MaterialDatabase.getMaterial(spoolStudioFields.material)
             return FilamentSpool(
                 id = spool.spoolId?.toIntOrNull(),

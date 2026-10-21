@@ -7,6 +7,32 @@ import org.junit.Test
 
 class SpoolModeHelpersTest {
     @Test
+    fun duplicatePetgPreservesMaterialModifierThroughFormReloadWithoutReusingUid() {
+        val source = FilamentSpool(
+            id = 7, material = "PETG", materialModifier = "2.0", variant = "Basic",
+            brand = "Bambu Lab", colorHex = "FFFFFF", minTemp = 240, maxTemp = 260,
+            bedMinTemp = 70, bedMaxTemp = 80, spoolmanName = "White", cardUids = listOf("AABBCCDD")
+        )
+        val data = buildSpoolModeSourceData(source, null)!!
+        val reloaded = FilamentSpool.fromOpenSpool(data)
+        assertEquals("PETG", reloaded.material)
+        assertEquals("2.0", reloaded.materialModifier)
+        assertNull(data.cardUid)
+        assertNull(data.spoolId)
+    }
+
+    @Test
+    fun duplicateFromReadDataDoesNotMoveOriginalUid() {
+        val read = com.spoolstudio.app.domain.models.OpenSpoolData(
+            type = "PETG", colorHex = null, brand = "Generic", minTemp = "240", maxTemp = "260",
+            cardUid = "AABBCCDD", formMaterialModifier = "2.0"
+        )
+        val result = buildSpoolModeSourceData(null, read)!!
+        assertNull(result.cardUid)
+        assertEquals("2.0", FilamentSpool.fromOpenSpool(result).materialModifier)
+    }
+
+    @Test
     fun buildSpoolModeSourceDataKeepsSelectedSpoolFieldsForDuplicateForm() {
         val source = FilamentSpool(
             id = 42,

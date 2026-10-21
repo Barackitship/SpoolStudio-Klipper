@@ -10,13 +10,15 @@ fun buildSpoolModeSourceData(
     selectedSpool != null -> selectedSpool.toFormSourceData()
     readData != null -> readData.copy(
         spoolId = null,
-        lotNr = null
+        lotNr = null,
+        cardUid = null
     )
     else -> null
 }
 
 private fun FilamentSpool.toFormSourceData(): OpenSpoolData = OpenSpoolData(
     type = material,
+    formMaterialModifier = materialModifier,
     colorHex = null,
     brand = brand,
     minTemp = minTemp?.toString() ?: "200",

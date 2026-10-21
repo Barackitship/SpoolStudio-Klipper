@@ -197,6 +197,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun loadSpoolmanUrl(context: Context) {
+        com.spoolstudio.app.data.local.TagStorageSettings.initialize(context)
         applySettingsLoadState(buildSettingsLoadState(AppSettingsStore.load(context)))
 
         if (spoolmanUrl.isNotBlank()) {
@@ -209,6 +210,53 @@ class MainViewModel : ViewModel() {
         }
     }
     fun handleNfcTagDetected(result: NfcTagReadResult) {
+        val generation = ++nfcLookupGeneration
+        val uid = normalizeCardUid(result.cardUid)
+        lastScannedCardUid = uid
+        rawReadText = null
+        if (uid.isBlank() || spoolmanUrl.isBlank()) {
+            handleLegacyNfcTagDetected(result)
+            return
+        }
+        val server = spoolmanUrl
+        viewModelScope.launch {
+            try {
+                val spool = SpoolmanService(server).findSpoolByCardUid(uid)
+                if (generation != nfcLookupGeneration || server != spoolmanUrl) return@launch
+                if (spool != null) {
+                    selectedSpool = spool
+                    readData = OpenSpoolData.toOpenSpoolData(spool).copy(cardUid = uid)
+                    currentSpoolId = spool.id?.toString()
+                    spoolMode = SpoolMode.UPDATE
+                    dataVersion++
+                    // A confirmed UID owner wins over any metadata-import heuristic.
+                    rawReadText = null
+                    showSnackbarMessage("Tag resolved to Spoolman ID #${spool.id}")
+                } else {
+                    selectedSpool = null
+                    currentSpoolId = null
+                    readData = null
+                    spoolMode = SpoolMode.CREATE
+                    dataVersion++
+                    handleLegacyNfcTagDetected(result, allowLoadedUidLookup = false)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) {
+                if (generation == nfcLookupGeneration && server == spoolmanUrl) {
+                    selectedSpool = null
+                    currentSpoolId = null
+                    readData = null
+                    spoolMode = SpoolMode.CREATE
+                    dataVersion++
+                    showSnackbarMessage("Tag lookup: ${e.message}", autoDismiss = false)
+                }
+            }
+        }
+    }
+
+    private var nfcLookupGeneration = 0
+
+    private fun handleLegacyNfcTagDetected(result: NfcTagReadResult, allowLoadedUidLookup: Boolean = true) {
         val data = result.data
         val physicalUid = normalizeCardUid(result.cardUid)
         Log.d("MainViewModel", "handleNfcTagDetected called with UID: $physicalUid data: $data")
@@ -218,8 +266,7 @@ class MainViewModel : ViewModel() {
         }
 
         val tagData = parseNfcTagData(data)?.let { parsedTag ->
-            val parsedUid = normalizeCardUid(parsedTag.readData.cardUid)
-            if (physicalUid.isNotBlank() && parsedUid.isBlank()) {
+            if (physicalUid.isNotBlank()) {
                 parsedTag.copy(readData = parsedTag.readData.copy(cardUid = physicalUid))
             } else {
                 parsedTag
@@ -235,7 +282,7 @@ class MainViewModel : ViewModel() {
         rawReadVersion = stateUpdate.rawReadVersion
 
         if (tagData != null) {
-            val matchedSpool = findLoadedSpoolByCardUid(tagData.readData)
+            val matchedSpool = if (allowLoadedUidLookup) findLoadedSpoolByCardUid(tagData.readData) else null
             if (matchedSpool != null) {
                 selectedSpool = matchedSpool
                 readData = OpenSpoolData.toOpenSpoolData(matchedSpool).copy(
@@ -383,7 +430,7 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             isLinkingScannedUid = true
             try {
-                SpoolmanService(spoolmanUrl).assignCardUidToSpool(spoolId, normalizedUid)
+                SpoolmanService(spoolmanUrl).assignCardUidToSpool(spoolId, normalizedUid, moveExisting = true)
                 val refreshed = spoolmanCatalogRepository.findBySpoolId(spoolmanUrl, spoolId)
                 if (refreshed != null) {
                     selectedSpool = refreshed
@@ -537,6 +584,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun handleFilamentSelection(filament: FilamentSpool?) {
+        nfcLookupGeneration++
         selectedSpool = filament
         val selection = buildSpoolSelectionResult(filament)
         readData = selection.readData
@@ -546,6 +594,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun duplicateCurrentSpool() {
+        nfcLookupGeneration++
         val sourceSpool = selectedSpool
         if (sourceSpool == null && readData == null) {
             showSnackbarMessage("No spool loaded to duplicate")
@@ -562,6 +611,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun createEmptySpool() {
+        nfcLookupGeneration++
         currentSpoolId = null
         selectedSpool = null
         spoolMode = SpoolMode.CREATE
@@ -634,8 +684,10 @@ class MainViewModel : ViewModel() {
                         spoolMode = SpoolMode.UPDATE
                         dataVersion++
                         loadSpoolmanFilaments()
+                        isConvertingTag = false
 
                         if (
+                            result.tagLinkWarning == null &&
                             convertedPending != null &&
                             result.finalSpool.id == convertedPending.spoolId &&
                             normalizeCardUid(request.cardUid) == convertedPending.cardUid
@@ -644,7 +696,8 @@ class MainViewModel : ViewModel() {
                             isConvertingTag = false
                             showSnackbarMessage("Tag converted to Paxx12 SpoolLink")
                         } else {
-                            showSnackbarMessage(saveResult.successMessage)
+                            showSnackbarMessage(result.tagLinkWarning ?: saveResult.successMessage,
+                                autoDismiss = result.tagLinkWarning == null)
                         }
                     }
                 }

@@ -16,7 +16,9 @@ data class OpenSpoolData(
     val subtype: String = "Basic",
     val spoolId: String? = null,
     val lotNr: String? = null,
-    val cardUid: String? = null
+    val cardUid: String? = null,
+    // Form state only: preserve modifiers without changing the OpenSpool wire format.
+    val formMaterialModifier: String? = null
 ) {
     fun toJson(): String {
         return JSONObject().apply {

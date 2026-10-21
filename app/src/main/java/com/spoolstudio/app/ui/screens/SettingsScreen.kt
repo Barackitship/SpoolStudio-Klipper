@@ -312,6 +312,7 @@ fun SettingsScreen(
             }
 
             SettingsPanel(title = "Spoolman") {
+                TagStoragePanel(tempUrl, onChanged = { onTestSpoolmanConnection(normalizeSettingsUrl(tempUrl)) })
                 SettingsTextField(
                     value = tempUrl,
                     onValueChange = {

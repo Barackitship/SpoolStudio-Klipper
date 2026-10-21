@@ -19,7 +19,8 @@ data class SpoolmanSaveResult(
     val finalSpool: FilamentSpool,
     val tagData: OpenSpoolData?,
     val resolvedLotNr: String,
-    val actionMode: SpoolMode
+    val actionMode: SpoolMode,
+    val tagLinkWarning: String? = null
 )
 
 class SpoolmanSaveRepository(
@@ -27,6 +28,7 @@ class SpoolmanSaveRepository(
 ) {
     suspend fun save(input: SpoolmanSaveInput): SpoolmanSaveResult {
         val service = serviceFactory(input.baseUrl)
+        service.requireTagMode()
         service.ensurePaxx12SpoolLinkFields()
         val request = input.request
         val actionMode = input.mode
@@ -89,9 +91,16 @@ class SpoolmanSaveRepository(
         }
 
         val uid = normalizeCardUid(request.cardUid ?: input.readData?.cardUid)
+        var tagLinkWarning: String? = null
         val linkedSpool = if (uid.isNotBlank()) {
             finalSpool.id?.let { spoolId ->
-                service.assignCardUidToSpool(spoolId, uid)
+                try {
+                    service.assignCardUidToSpool(spoolId, uid)
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e
+                } catch (e: Exception) {
+                    // The spool already exists. Return it so retrying does not create a second one.
+                    tagLinkWarning = "Spool #$spoolId saved, but UID linking is incomplete: ${e.message}"
+                }
                 service.findFilamentBySpoolId(spoolId.toString())
             } ?: finalSpool
         } else {
@@ -102,7 +111,8 @@ class SpoolmanSaveRepository(
             finalSpool = linkedSpool,
             tagData = buildTagData(linkedSpool, request.copy(cardUid = uid.ifBlank { request.cardUid }), resolvedLotNr),
             resolvedLotNr = resolvedLotNr,
-            actionMode = actionMode
+            actionMode = actionMode,
+            tagLinkWarning = tagLinkWarning
         )
     }
 

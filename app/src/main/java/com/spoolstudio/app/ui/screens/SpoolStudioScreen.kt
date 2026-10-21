@@ -283,6 +283,10 @@ fun SpoolStudioScreen(
                         onRefreshSpoolmanCatalogIfStale = onRefreshSpoolmanCatalogIfStale
                     )
 
+                    if (spoolMode == SpoolMode.UPDATE && selectedSpool?.id != null) {
+                        SpoolTagsPanel(spoolmanUrl, selectedSpool) { onRefreshSelectedSpool(selectedSpool.id) }
+                    }
+
                     validationMessage()?.let { message ->
                         ValidationMessageCard(message = message)
                     }
@@ -436,7 +440,7 @@ fun SpoolStudioScreen(
                 text = {
                     Text(
                         text = if (selectedSpoolId != null) {
-                            "Store UID ${lastScannedCardUid.orEmpty()} on Spoolman ID #$selectedSpoolId. The RFID tag content is not changed."
+                            "Link UID ${lastScannedCardUid.orEmpty()} to Spoolman ID #$selectedSpoolId. If another spool owns this native tag, move it here. The RFID tag content is not changed."
                         } else {
                             "Select an existing Spoolman spool first, then link UID ${lastScannedCardUid.orEmpty()}."
                         },

@@ -96,7 +96,7 @@ class NfcController(private val activity: Activity) {
                         onTagDetected?.invoke(NfcTagReadResult(data = data, cardUid = cardUid))
 
                         if (data.isNullOrBlank()) {
-                            onStatusUpdate?.invoke("❌ Tag detected but no data found", false)
+                            onStatusUpdate?.invoke("✅ Tag UID read", false)
                         } else {
                             val isHexDump =
                                 data.contains("Bambu RFID Parsed") ||

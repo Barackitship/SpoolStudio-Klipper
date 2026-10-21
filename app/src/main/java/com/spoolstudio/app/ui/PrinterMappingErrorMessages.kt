@@ -24,6 +24,8 @@ private fun friendlyPrinterMappingError(
 
     return when {
         rawMessage.isBlank() -> unknownPrinterMappingError
+        rawMessage.contains("No Paxx12 toolhead assignment command", ignoreCase = true) ->
+            "No Paxx12 toolhead assignment command is available on the printer. Enable the printer Spoolman integration, restart Klipper/Moonraker, then try again."
         rawMessage.contains("timeout", ignoreCase = true) -> {
             if (operation == PrinterMappingOperation.Save) {
                 "Printer script did not finish in time. Check the printer macro or active spool script."
