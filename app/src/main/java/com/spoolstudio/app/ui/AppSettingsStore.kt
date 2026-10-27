@@ -17,6 +17,7 @@ data class AppSettings(
     val spoolmanUrl: String,
     val moonrakerUrl: String,
     val printerIntegrationMode: PrinterIntegrationMode,
+    val toolheadCount: Int = 1,
     val spoolmanSortBy: String,
     val bambuMasterKey: String,
     val showLotNumber: Boolean,
@@ -32,6 +33,7 @@ object AppSettingsStore {
     private const val DEFAULT_URL = ""
     private const val MOONRAKER_URL_KEY = "moonraker_url"
     private const val PRINTER_INTEGRATION_MODE_KEY = "printer_integration_mode"
+    private const val TOOLHEAD_COUNT_KEY = "toolhead_count"
     private const val SHOW_LOT_NUMBER_KEY = "show_lot_number"
     private const val SHOW_COMMENT_FIELD = "show_comment_field"
     private const val SHOW_EMPTY_SPOOL_WEIGHT = "show_empty_spool_weight"
@@ -68,8 +70,9 @@ object AppSettingsStore {
             spoolmanUrl = activeProfile.spoolmanUrl,
             moonrakerUrl = activeProfile.moonrakerUrl,
             printerIntegrationMode = PrinterIntegrationMode.fromStoredValue(
-                prefs.getString(PRINTER_INTEGRATION_MODE_KEY, PrinterIntegrationMode.PAXX12_SPOOL_LINK.storedValue)
+                prefs.getString(PRINTER_INTEGRATION_MODE_KEY, PrinterIntegrationMode.STANDARD_KLIPPER.storedValue)
             ),
+            toolheadCount = prefs.getInt(TOOLHEAD_COUNT_KEY, 1).coerceIn(1, 12),
             spoolmanSortBy = prefs.getString(SPOOLMAN_SORT_KEY, "")?.ifBlank { "" } ?: "",
             bambuMasterKey = prefs.getString(BAMBU_MASTER_KEY, "")?.trim()?.uppercase() ?: "",
             showLotNumber = prefs.getBoolean(SHOW_LOT_NUMBER_KEY, false),
@@ -117,6 +120,13 @@ object AppSettingsStore {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(MATERIAL_MODIFIER_FIELD_DECLINED, value)
+            .apply()
+    }
+
+    fun saveToolheadCount(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(TOOLHEAD_COUNT_KEY, value.coerceIn(1, 12))
             .apply()
     }
 

@@ -6,10 +6,11 @@ import org.junit.Test
 
 class SettingsStateHelpersTest {
     @Test
-    fun oldPrinterModeSettingsResolveToSpoolLink() {
-        assertEquals(PrinterIntegrationMode.PAXX12_SPOOL_LINK, PrinterIntegrationMode.fromStoredValue("auto_detect"))
-        assertEquals(PrinterIntegrationMode.PAXX12_SPOOL_LINK, PrinterIntegrationMode.fromStoredValue("legacy_paxx12"))
-        assertEquals(PrinterIntegrationMode.PAXX12_SPOOL_LINK, PrinterIntegrationMode.fromStoredValue(null))
+    fun oldPrinterModeSettingsResolveToStandardKlipper() {
+        assertEquals(PrinterIntegrationMode.STANDARD_KLIPPER, PrinterIntegrationMode.fromStoredValue("auto_detect"))
+        assertEquals(PrinterIntegrationMode.STANDARD_KLIPPER, PrinterIntegrationMode.fromStoredValue("legacy_paxx12"))
+        assertEquals(PrinterIntegrationMode.STANDARD_KLIPPER, PrinterIntegrationMode.fromStoredValue(null))
+        assertEquals(PrinterIntegrationMode.PAXX12_SPOOL_LINK, PrinterIntegrationMode.fromStoredValue("paxx12_spoollink"))
     }
 
     @Test

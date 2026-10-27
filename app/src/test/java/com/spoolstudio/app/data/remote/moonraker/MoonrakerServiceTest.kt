@@ -47,4 +47,11 @@ class MoonrakerServiceTest {
             )
         )
     }
+
+    @Test
+    fun componentsDetectMoonrakerSpoolmanIntegration() {
+        val state = moonrakerComponentState(listOf("database", "spoolman"))
+        assertTrue(state?.hasSpoolman == true)
+        assertFalse(state?.hasSpoolLink == true)
+    }
 }

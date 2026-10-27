@@ -101,7 +101,7 @@ fun SpoolStudioLogo(
 
         /*
         Text(
-            text = "Spool Studio",
+            text = "Spool Studio KE",
             fontFamily = SoraFontFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 25.sp,
@@ -112,7 +112,7 @@ fun SpoolStudioLogo(
         )*/
         if (showTitle) {
             Text(
-                text = "Spool Studio",
+                text = "Spool Studio KE",
                 fontFamily = SoraFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 25.sp,

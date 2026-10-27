@@ -11,11 +11,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.spoolstudio.com.spoolstudio.app"
+        applicationId = "com.spoolstudio.klipper"
         minSdk = 29
         targetSdk = 36
         versionCode = 24
-        versionName = "3.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

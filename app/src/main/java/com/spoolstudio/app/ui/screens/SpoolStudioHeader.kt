@@ -28,7 +28,7 @@ fun SpoolStudioHeader(
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Text(
-            text = "Spool Studio",
+            text = "Spool Studio KE",
             style = MaterialTheme.typography.titleLarge,
             color = SpoolStudioColors.OnGraphite,
             modifier = Modifier.align(Alignment.Center)

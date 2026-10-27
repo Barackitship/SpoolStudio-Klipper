@@ -33,7 +33,7 @@ fun MainScreenContent(
                 (context as? Activity)?.finishAndRemoveTask()
             } else {
                 lastBackPressTime = now
-                viewModel.showSnackbarMessage("Press back again to close Spool Studio")
+                viewModel.showSnackbarMessage("Press back again to close Spool Studio KE")
             }
         }
     }
@@ -51,6 +51,7 @@ fun MainScreenContent(
             showCommentField = viewModel.showCommentField,
             showEmptySpoolWeight = viewModel.showEmptySpoolWeight,
             printerIntegrationMode = viewModel.printerIntegrationMode,
+            toolheadCount = viewModel.toolheadCount,
             spoolCount = viewModel.spools.size,
             activeSpoolCount = viewModel.spools.count { !it.archived },
             archivedSpoolCount = viewModel.spools.count { it.archived },
@@ -77,6 +78,9 @@ fun MainScreenContent(
 
             onTestMoonrakerConnection = { url ->
                 viewModel.testMoonrakerConnection(url)
+            },
+            onToolheadCountChanged = { count ->
+                viewModel.setToolheadCount(context, count)
             },
 
             onTestSpoolmanConnection = { url ->
@@ -170,6 +174,7 @@ fun MainScreenContent(
             printerTool3SpoolId = viewModel.printerTool3SpoolId,
             printerTool4SpoolId = viewModel.printerTool4SpoolId,
             printerToolheadStatuses = viewModel.printerToolheadStatuses,
+            toolheadCount = viewModel.toolheadCount,
             isLoadingPrinterMapping = viewModel.isLoadingPrinterMapping,
             onLoadCurrentPrinterMapping = { viewModel.loadCurrentPrinterMapping() },
             onAssignPrinterToolhead = { toolheadIndex, spoolId ->

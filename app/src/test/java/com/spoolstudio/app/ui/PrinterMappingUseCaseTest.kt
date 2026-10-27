@@ -8,13 +8,13 @@ import org.junit.Test
 class PrinterMappingUseCaseTest {
     @Test
     fun loadReturnsSpoolLinkMessage() = runBlocking {
-        val snapshot = PrinterMappingSnapshot(1, 2, null, null, null, ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK)
+        val snapshot = PrinterMappingSnapshot(1, 2, null, null, null, ResolvedPrinterIntegrationMode.STANDARD_KLIPPER)
         val useCase = PrinterMappingUseCase(
-            loadMapping = { _, _ -> PrinterMappingLoadResult(snapshot, activeSpoolAvailable = true) },
-            saveMapping = { _, _, _, _, _, _, _ -> throw AssertionError("save must not be called") }
+            loadMapping = { _, _, _ -> PrinterMappingLoadResult(snapshot, activeSpoolAvailable = true) },
+            saveMapping = { _, _, _, _, _, _, _, _ -> throw AssertionError("save must not be called") }
         )
 
-        val result = useCase.load("http://printer.local", PrinterIntegrationMode.PAXX12_SPOOL_LINK)
+        val result = useCase.load("http://printer.local", PrinterIntegrationMode.STANDARD_KLIPPER)
 
         assertTrue(result is PrinterMappingOperationResult.Loaded)
         assertEquals(
@@ -27,8 +27,8 @@ class PrinterMappingUseCaseTest {
     @Test
     fun saveReturnsFriendlyFailureMessage() = runBlocking {
         val useCase = PrinterMappingUseCase(
-            loadMapping = { _, _ -> throw AssertionError("load must not be called") },
-            saveMapping = { _, _, _, _, _, _, _ -> throw IllegalStateException("timeout after 10 seconds") }
+            loadMapping = { _, _, _ -> throw AssertionError("load must not be called") },
+            saveMapping = { _, _, _, _, _, _, _, _ -> throw IllegalStateException("timeout after 10 seconds") }
         )
 
         val result = useCase.save(

@@ -20,8 +20,57 @@ data class MoonrakerConnectionResult(
 
 class MoonrakerConnectionRepository {
     suspend fun test(baseUrl: String): MoonrakerConnectionResult {
-        val testUrl = "$baseUrl/printer/info"
+        val normalizedBase = baseUrl.trimEnd('/')
 
+        // Primary health check: Standard Moonraker /server/spoolman/status
+        val spoolmanStatusUrl = "$normalizedBase/server/spoolman/status"
+        val spoolmanConnection = withContext(Dispatchers.IO) {
+            runCatching {
+                (URL(spoolmanStatusUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                    requestMethod = "GET"
+                }
+            }.getOrNull()
+        }
+
+        if (spoolmanConnection != null) {
+            try {
+                val responseCode = withContext(Dispatchers.IO) { spoolmanConnection.responseCode }
+                val responseText = withContext(Dispatchers.IO) {
+                    if (responseCode in 200..299) {
+                        spoolmanConnection.inputStream.bufferedReader().use { it.readText() }
+                    } else {
+                        spoolmanConnection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    }
+                }
+
+                if (responseCode in 200..299 && responseText.trim().startsWith("{")) {
+                    val printerInfo = runCatching {
+                        com.spoolstudio.app.data.remote.moonraker.MoonrakerService(normalizedBase).getPrinterInfo()
+                    }.getOrNull()
+
+                    return MoonrakerConnectionResult(
+                        reachable = true,
+                        status = "Moonraker reachable",
+                        firmwareVersion = printerInfo?.displayVersion,
+                        moonrakerVersion = printerInfo?.moonrakerVersion,
+                        supportsSpoolLink = true,
+                        hasSpoolmanComponent = true,
+                        hasSpoolLinkComponent = true,
+                        spoolmanIntegrationEnabled = true,
+                        detectedModeLabel = "Firmware Spoolman integration"
+                    )
+                }
+            } catch (_: Exception) {
+                // Fall back to /printer/info if /server/spoolman/status fails
+            } finally {
+                spoolmanConnection.disconnect()
+            }
+        }
+
+        // Fallback health check: /printer/info
+        val testUrl = "$normalizedBase/printer/info"
         val connection = withContext(Dispatchers.IO) {
             (URL(testUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 5000
@@ -34,12 +83,16 @@ class MoonrakerConnectionRepository {
             val responseCode = withContext(Dispatchers.IO) { connection.responseCode }
 
             val responseText = withContext(Dispatchers.IO) {
-                connection.inputStream.bufferedReader().use { it.readText() }
+                if (responseCode in 200..299) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                }
             }
 
             return if (responseCode in 200..299 && responseText.trim().startsWith("{")) {
                 val printerInfo = runCatching {
-                    com.spoolstudio.app.data.remote.moonraker.MoonrakerService(baseUrl).getPrinterInfo()
+                    com.spoolstudio.app.data.remote.moonraker.MoonrakerService(normalizedBase).getPrinterInfo()
                 }.getOrNull()
                 val supportsSpoolLink = printerInfo?.supportsSpoolLink
 

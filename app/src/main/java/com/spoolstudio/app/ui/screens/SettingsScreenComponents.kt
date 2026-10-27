@@ -86,7 +86,7 @@ fun SettingsPrinterIntegrationDropdown(
         label = "Printer mode",
         options = PrinterIntegrationMode.entries.map { it.label to it },
         selectedValue = selectedMode,
-        fallbackLabel = PrinterIntegrationMode.PAXX12_SPOOL_LINK.label,
+        fallbackLabel = PrinterIntegrationMode.STANDARD_KLIPPER.label,
         expanded = expanded,
         onExpandedChange = onExpandedChange,
         onOptionSelected = onModeSelected

@@ -6,6 +6,7 @@ data class SettingsSaveInput(
     val connectionProfiles: List<ConnectionProfile>,
     val activeConnectionProfileId: String,
     val printerIntegrationMode: PrinterIntegrationMode,
+    val toolheadCount: Int = 1,
     val spoolmanSortBy: String,
     val bambuMasterKey: String,
     val showCommentField: Boolean
@@ -17,6 +18,7 @@ data class SettingsSaveState(
     val spoolmanUrl: String,
     val moonrakerUrl: String,
     val printerIntegrationMode: PrinterIntegrationMode,
+    val toolheadCount: Int = 1,
     val spoolmanSortBy: String,
     val bambuMasterKey: String,
     val showCommentField: Boolean
@@ -32,6 +34,7 @@ data class SettingsLoadState(
     val spoolmanSortBy: String,
     val moonrakerUrl: String,
     val printerIntegrationMode: PrinterIntegrationMode,
+    val toolheadCount: Int = 1,
     val bambuMasterKey: String,
     val materialModifierFieldDeclined: Boolean
 )
@@ -47,6 +50,7 @@ fun buildSettingsLoadState(settings: AppSettings): SettingsLoadState =
         spoolmanSortBy = settings.spoolmanSortBy,
         moonrakerUrl = settings.moonrakerUrl,
         printerIntegrationMode = settings.printerIntegrationMode,
+        toolheadCount = settings.toolheadCount,
         bambuMasterKey = settings.bambuMasterKey,
         materialModifierFieldDeclined = settings.materialModifierFieldDeclined
     )
@@ -83,6 +87,7 @@ fun buildSettingsSaveState(input: SettingsSaveInput): SettingsSaveState {
         spoolmanUrl = activeProfile.spoolmanUrl,
         moonrakerUrl = activeProfile.moonrakerUrl,
         printerIntegrationMode = input.printerIntegrationMode,
+        toolheadCount = input.toolheadCount.coerceIn(1, 12),
         spoolmanSortBy = input.spoolmanSortBy.ifBlank { "" },
         bambuMasterKey = input.bambuMasterKey.trim().uppercase(),
         showCommentField = input.showCommentField

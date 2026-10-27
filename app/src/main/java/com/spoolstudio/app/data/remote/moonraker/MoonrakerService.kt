@@ -57,6 +57,11 @@ interface MoonrakerApi {
 
     @GET("server/spoolman/status")
     suspend fun getSpoolmanStatus(): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @POST("server/spoolman/spool_id")
+    suspend fun postSpoolmanSpoolId(
+        @Body body: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
 }
 
 class MoonrakerService(private val baseUrl: String) {
@@ -89,6 +94,11 @@ class MoonrakerService(private val baseUrl: String) {
             api.getServerInfo().resultOrThrow("Moonraker server info query failed")
         }.getOrNull()
 
+        val spoolmanStatusResult = runCatching {
+            val response = api.getSpoolmanStatus()
+            response.isSuccessful && response.body() != null
+        }.getOrDefault(false)
+
         val productInfo = (systemInfoResult?.get("system_info") as? Map<*, *>)
             ?.get("product_info") as? Map<*, *>
 
@@ -97,14 +107,20 @@ class MoonrakerService(private val baseUrl: String) {
             ?: productInfo.stringValue("software_version")
         val versionForFeatureGate = firmwareVersion ?: softwareVersion
         val components = moonrakerComponentState(serverInfoResult?.listValue("components"))
+
+        val supportsSpoolLink = spoolmanStatusResult || moonrakerVersionAtLeast(versionForFeatureGate, 1, 5, 0)
+        val hasSpoolman = if (spoolmanStatusResult) true else components?.hasSpoolman
+        val hasSpoolLink = if (spoolmanStatusResult) true else components?.hasSpoolLink
+        val integrationEnabled = if (spoolmanStatusResult) true else components?.integrationEnabled
+
         return MoonrakerPrinterInfo(
             firmwareVersion = firmwareVersion,
             moonrakerVersion = serverInfoResult.stringValue("moonraker_version"),
             softwareVersion = softwareVersion,
-            supportsSpoolLink = moonrakerVersionAtLeast(versionForFeatureGate, 1, 5, 0),
-            hasSpoolmanComponent = components?.hasSpoolman,
-            hasSpoolLinkComponent = components?.hasSpoolLink,
-            spoolmanIntegrationEnabled = components?.integrationEnabled
+            supportsSpoolLink = supportsSpoolLink,
+            hasSpoolmanComponent = hasSpoolman,
+            hasSpoolLinkComponent = hasSpoolLink,
+            spoolmanIntegrationEnabled = integrationEnabled
         )
     }
 
@@ -131,118 +147,121 @@ class MoonrakerService(private val baseUrl: String) {
     }
 
     suspend fun getSpoolLinkToolMapping(): Map<String, Int?> {
-        val response = api.queryPrinterObjects(
-            mapOf(
-                "objects" to mapOf(
-                    "print_task_config" to listOf("filament_spool_id")
-                )
-            )
-        )
-
-        val status = response.statusOrThrow("Moonraker SpoolLink mapping query failed")
-        val config = status["print_task_config"] as? Map<*, *>
-            ?: throw IllegalStateException("Moonraker response did not contain print_task_config")
-        val spoolIds = when (val raw = config["filament_spool_id"]) {
-            null -> emptyList<Any?>()
-            is List<*> -> raw
-            else -> throw IllegalStateException("Moonraker filament_spool_id had unexpected type")
-        }
-
-        return mapOf(
-            "T0" to spoolIds.getOrNull(0).toPositiveSpoolIdOrNull(),
-            "T1" to spoolIds.getOrNull(1).toPositiveSpoolIdOrNull(),
-            "T2" to spoolIds.getOrNull(2).toPositiveSpoolIdOrNull(),
-            "T3" to spoolIds.getOrNull(3).toPositiveSpoolIdOrNull()
-        )
-    }
-
-    suspend fun getSpoolLinkToolheadStatuses(): List<MoonrakerToolheadStatus> {
-        val response = api.queryPrinterObjects(
-            mapOf(
-                "objects" to mapOf(
-                    "print_task_config" to listOf(
-                        "filament_spool_id",
-                        "filament_exist",
-                        "filament_vendor",
-                        "filament_type",
-                        "filament_sub_type",
-                        "filament_color_rgba"
-                    ),
-                    "AFC_lane E0" to listOf(
-                        "load",
-                        "prep",
-                        "tool_loaded",
-                        "material",
-                        "filament_name",
-                        "spool_id",
-                        "color",
-                        "status"
-                    ),
-                    "AFC_lane E1" to listOf(
-                        "load",
-                        "prep",
-                        "tool_loaded",
-                        "material",
-                        "filament_name",
-                        "spool_id",
-                        "color",
-                        "status"
-                    ),
-                    "AFC_lane E2" to listOf(
-                        "load",
-                        "prep",
-                        "tool_loaded",
-                        "material",
-                        "filament_name",
-                        "spool_id",
-                        "color",
-                        "status"
-                    ),
-                    "AFC_lane E3" to listOf(
-                        "load",
-                        "prep",
-                        "tool_loaded",
-                        "material",
-                        "filament_name",
-                        "spool_id",
-                        "color",
-                        "status"
+        val activeSpoolId = runCatching { getActiveSpoolId() }.getOrNull()
+        val spoolLinkMapping = runCatching {
+            val response = api.queryPrinterObjects(
+                mapOf(
+                    "objects" to mapOf(
+                        "print_task_config" to listOf("filament_spool_id")
                     )
                 )
             )
+
+            val status = response.statusOrThrow("Moonraker SpoolLink mapping query failed")
+            val config = status["print_task_config"] as? Map<*, *>
+                ?: return@runCatching null
+            val spoolIds = when (val raw = config["filament_spool_id"]) {
+                null -> emptyList<Any?>()
+                is List<*> -> raw
+                else -> return@runCatching null
+            }
+
+            mapOf(
+                "T0" to spoolIds.getOrNull(0).toPositiveSpoolIdOrNull(),
+                "T1" to spoolIds.getOrNull(1).toPositiveSpoolIdOrNull(),
+                "T2" to spoolIds.getOrNull(2).toPositiveSpoolIdOrNull(),
+                "T3" to spoolIds.getOrNull(3).toPositiveSpoolIdOrNull()
+            )
+        }.getOrNull()
+
+        return spoolLinkMapping ?: mapOf(
+            "T0" to activeSpoolId,
+            "T1" to null,
+            "T2" to null,
+            "T3" to null
         )
+    }
 
-        val status = response.statusOrThrow("Moonraker SpoolLink toolhead status query failed")
-        val config = status["print_task_config"] as? Map<*, *>
+    suspend fun getSpoolLinkToolheadStatuses(toolheadCount: Int = 1): List<MoonrakerToolheadStatus> {
+        val count = toolheadCount.coerceIn(1, 12)
+        val spoolLinkStatuses = runCatching {
+            val objectsMap = mutableMapOf<String, Any>(
+                "print_task_config" to listOf(
+                    "filament_spool_id",
+                    "filament_exist",
+                    "filament_vendor",
+                    "filament_type",
+                    "filament_sub_type",
+                    "filament_color_rgba"
+                )
+            )
+            (0 until count).forEach { idx ->
+                objectsMap["AFC_lane E$idx"] = listOf(
+                    "load",
+                    "prep",
+                    "tool_loaded",
+                    "material",
+                    "filament_name",
+                    "spool_id",
+                    "color",
+                    "status"
+                )
+            }
+            val response = api.queryPrinterObjects(mapOf("objects" to objectsMap))
 
-        return (0..3).map { index ->
-            val lane = status["AFC_lane E$index"] as? Map<*, *>
-            val spoolId = config.listItem("filament_spool_id", index).toPositiveSpoolIdOrNull()
-                ?: lane.value("spool_id").toPositiveSpoolIdOrNull()
-            val material = config.listItem("filament_type", index).cleanPrinterText()
-                ?: lane.value("material").cleanPrinterText()
-            val variant = config.listItem("filament_sub_type", index).cleanPrinterText()
-            val brand = config.listItem("filament_vendor", index).cleanPrinterText()
-            val filamentName = lane.value("filament_name").cleanPrinterText()
-            val colorHex = config.listItem("filament_color_rgba", index).toPrinterColorHex()
-                ?: lane.value("color").toPrinterColorHex()
-            val isLoaded = config.listItem("filament_exist", index).toBooleanLike()
-                || lane.value("load").toBooleanLike()
-                || lane.value("prep").toBooleanLike()
-                || lane.value("tool_loaded").toBooleanLike()
-                || material != null
-                || filamentName != null
-                || spoolId != null
+            val status = response.statusOrThrow("Moonraker toolhead status query failed")
+            val config = status["print_task_config"] as? Map<*, *>
+            if (config == null && (0 until count).none { status["AFC_lane E$it"] != null }) {
+                return@runCatching null
+            }
 
+            (0 until count).map { index ->
+                val lane = status["AFC_lane E$index"] as? Map<*, *>
+                val spoolId = config.listItem("filament_spool_id", index).toPositiveSpoolIdOrNull()
+                    ?: lane.value("spool_id").toPositiveSpoolIdOrNull()
+                val material = config.listItem("filament_type", index).cleanPrinterText()
+                    ?: lane.value("material").cleanPrinterText()
+                val variant = config.listItem("filament_sub_type", index).cleanPrinterText()
+                val brand = config.listItem("filament_vendor", index).cleanPrinterText()
+                val filamentName = lane.value("filament_name").cleanPrinterText()
+                val colorHex = config.listItem("filament_color_rgba", index).toPrinterColorHex()
+                    ?: lane.value("color").toPrinterColorHex()
+                val isLoaded = config.listItem("filament_exist", index).toBooleanLike()
+                    || lane.value("load").toBooleanLike()
+                    || lane.value("prep").toBooleanLike()
+                    || lane.value("tool_loaded").toBooleanLike()
+                    || material != null
+                    || filamentName != null
+                    || spoolId != null
+
+                MoonrakerToolheadStatus(
+                    toolheadIndex = index,
+                    spoolId = spoolId,
+                    isLoaded = isLoaded,
+                    material = material,
+                    variant = variant,
+                    brand = brand,
+                    filamentName = filamentName,
+                    colorHex = colorHex
+                )
+            }
+        }.getOrNull()
+
+        if (spoolLinkStatuses != null && spoolLinkStatuses.any { it.isLoaded || it.spoolId != null }) {
+            return spoolLinkStatuses
+        }
+
+        val activeSpoolId = runCatching { getActiveSpoolId() }.getOrNull()
+        return (0 until count).map { index ->
             MoonrakerToolheadStatus(
                 toolheadIndex = index,
-                spoolId = spoolId,
-                isLoaded = isLoaded,
-                material = material,
-                variant = variant,
-                brand = brand,
-                filamentName = filamentName,
-                colorHex = colorHex
+                spoolId = if (index == 0) activeSpoolId else null,
+                isLoaded = index == 0 && activeSpoolId != null,
+                material = null,
+                variant = null,
+                brand = null,
+                filamentName = null,
+                colorHex = null
             )
         }
     }
@@ -267,7 +286,7 @@ class MoonrakerService(private val baseUrl: String) {
     }
 
     suspend fun setSpoolLinkToolSpool(toolheadIndex: Int, spoolId: Int?): Map<String, Int?> {
-        require(toolheadIndex in 0..3) { "Toolhead index must be between 0 and 3" }
+        require(toolheadIndex in 0..11) { "Toolhead index must be between 0 and 11" }
         val value = spoolId ?: 0
         sendSpoolLinkAssignmentCommand(toolheadIndex, value)
 
@@ -276,13 +295,15 @@ class MoonrakerService(private val baseUrl: String) {
         repeat(8) { attempt ->
             delay(if (attempt == 0) 500 else 850)
             latestMapping = getSpoolLinkToolMapping()
-            if (latestMapping["T$toolheadIndex"] == expected) {
+            if (latestMapping["T$toolheadIndex"] == expected || latestMapping["T0"] == expected) {
                 return latestMapping
             }
         }
 
-        if (latestMapping["T$toolheadIndex"] != expected) {
-            val actual = latestMapping["T$toolheadIndex"]?.toString() ?: "empty"
+        if (latestMapping["T$toolheadIndex"] != expected && latestMapping["T0"] != expected) {
+            val actual = latestMapping["T$toolheadIndex"]?.toString()
+                ?: latestMapping["T0"]?.toString()
+                ?: "empty"
             val wanted = expected?.toString() ?: "empty"
             throw IllegalStateException(
                 "Toolhead ${toolheadIndex + 1} assignment was not applied. Expected spool $wanted, printer still reports $actual."
@@ -293,39 +314,35 @@ class MoonrakerService(private val baseUrl: String) {
     }
 
     private suspend fun sendSpoolLinkAssignmentCommand(toolheadIndex: Int, spoolId: Int) {
-        val scripts = listOf(
-            "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=$toolheadIndex FILAMENT_SPOOL_ID=$spoolId FORCE=1",
-            "SET_SPOOL_ID LANE=E$toolheadIndex SPOOL_ID=$spoolId"
-        )
-        val errors = mutableListOf<String>()
-
-        for (script in scripts) {
-            val response = try {
-                api.sendGcode(mapOf("script" to script))
-            } catch (error: Exception) {
-                errors += "${script.substringBefore(' ')}: ${error.message ?: error::class.java.simpleName}"
-                continue
-            }
-
-            if (response.isSuccessful) {
-                return
-            }
-
-            val errorText = response.errorBody()?.string()?.trim()
-            errors += buildString {
-                append(script.substringBefore(' '))
-                append(" HTTP ")
-                append(response.code())
-                if (!errorText.isNullOrBlank()) {
-                    append(": ")
-                    append(errorText.take(180))
-                }
-            }
+        val script = if (spoolId > 0) {
+            "SET_ACTIVE_SPOOL SPOOL_ID=$spoolId"
+        } else {
+            "CLEAR_ACTIVE_SPOOL"
         }
 
-        throw IllegalStateException(
-            "Moonraker SpoolLink assignment command failed. Tried SET_PRINT_FILAMENT_CONFIG and SET_SPOOL_ID. ${errors.joinToString(" | ")}"
-        )
+        val response = try {
+            api.sendGcode(mapOf("script" to script))
+        } catch (error: Exception) {
+            throw IllegalStateException(
+                "Moonraker command failed: ${error.message ?: error::class.java.simpleName}",
+                error
+            )
+        }
+
+        if (!response.isSuccessful) {
+            val errorText = response.errorBody()?.string()?.trim()
+            throw IllegalStateException(
+                buildString {
+                    append("Moonraker command failed (HTTP ")
+                    append(response.code())
+                    append(")")
+                    if (!errorText.isNullOrBlank()) {
+                        append(": ")
+                        append(errorText.take(180))
+                    }
+                }
+            )
+        }
     }
 
     private fun extractSpoolId(raw: Any?): Int? {
@@ -363,7 +380,7 @@ class MoonrakerService(private val baseUrl: String) {
 
     suspend fun setActiveSpoolId(spoolId: Int?) {
         val script = if (spoolId != null && spoolId > 0) {
-            "SET_ACTIVE_SPOOL ID=$spoolId"
+            "SET_ACTIVE_SPOOL SPOOL_ID=$spoolId"
         } else {
             "CLEAR_ACTIVE_SPOOL"
         }
@@ -375,6 +392,29 @@ class MoonrakerService(private val baseUrl: String) {
         if (!response.isSuccessful) {
             val errorText = response.errorBody()?.string()
             throw IllegalStateException("Moonraker active spool write failed (${response.code()}): $errorText")
+        }
+    }
+
+    /**
+     * Sets the active spool via the Moonraker REST endpoint (POST /server/spoolman/spool_id).
+     * This is synchronous – Moonraker commits the change before returning the response, so
+     * there is no timing gap between write and verification. Preferred for STANDARD_KLIPPER
+     * mode where the GCode-based assignment can lag the status API.
+     */
+    suspend fun setActiveSpoolIdViaRest(spoolId: Int?) {
+        // Moonraker accepts {"spool_id": N} to set or {"spool_id": null} to clear.
+        @Suppress("UNCHECKED_CAST")
+        val body: Map<String, Any?> = mapOf("spool_id" to (if (spoolId != null && spoolId > 0) spoolId else null))
+        val response = try {
+            api.postSpoolmanSpoolId(body)
+        } catch (e: Exception) {
+            // REST endpoint may not be available on older Moonraker builds; fall back to GCode.
+            setActiveSpoolId(spoolId)
+            return
+        }
+        if (!response.isSuccessful) {
+            // Fall back to GCode on error (e.g. older Moonraker not supporting the endpoint).
+            setActiveSpoolId(spoolId)
         }
     }
 

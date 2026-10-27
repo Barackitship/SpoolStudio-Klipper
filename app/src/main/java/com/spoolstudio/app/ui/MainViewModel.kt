@@ -56,7 +56,9 @@ class MainViewModel : ViewModel() {
         private set
     var moonrakerUrl by mutableStateOf("")
         private set
-    var printerIntegrationMode by mutableStateOf(PrinterIntegrationMode.PAXX12_SPOOL_LINK)
+    var printerIntegrationMode by mutableStateOf(PrinterIntegrationMode.STANDARD_KLIPPER)
+        private set
+    var toolheadCount by mutableStateOf(1)
         private set
     var spools by mutableStateOf<List<FilamentSpool>>(emptyList())
         private set
@@ -534,6 +536,7 @@ class MainViewModel : ViewModel() {
                 connectionProfiles = newConnectionProfiles,
                 activeConnectionProfileId = newActiveConnectionProfileId,
                 printerIntegrationMode = newPrinterIntegrationMode,
+                toolheadCount = toolheadCount,
                 spoolmanSortBy = newSort,
                 bambuMasterKey = newBambuMasterKey,
                 showCommentField = newShowCommentField
@@ -545,6 +548,7 @@ class MainViewModel : ViewModel() {
         spoolmanUrl = settings.spoolmanUrl
         moonrakerUrl = settings.moonrakerUrl
         printerIntegrationMode = settings.printerIntegrationMode
+        toolheadCount = settings.toolheadCount
         resolvedPrinterIntegrationMode = null
         spoolmanSortBy = settings.spoolmanSortBy
         bambuMasterKey = settings.bambuMasterKey
@@ -579,6 +583,7 @@ class MainViewModel : ViewModel() {
         spoolmanSortBy = state.spoolmanSortBy
         moonrakerUrl = state.moonrakerUrl
         printerIntegrationMode = state.printerIntegrationMode
+        toolheadCount = state.toolheadCount
         bambuMasterKey = state.bambuMasterKey
         materialModifierFieldDeclined = state.materialModifierFieldDeclined
     }
@@ -1086,7 +1091,8 @@ class MainViewModel : ViewModel() {
             try {
                 when (val result = printerMappingUseCase.load(
                     baseUrl = normalizeConnectionUrl(url),
-                    printerIntegrationMode = printerIntegrationMode
+                    printerIntegrationMode = printerIntegrationMode,
+                    toolheadCount = toolheadCount
                 )) {
                     is PrinterMappingOperationResult.Loaded -> {
                         applyPrinterMappingSnapshot(result.snapshot)
@@ -1108,6 +1114,12 @@ class MainViewModel : ViewModel() {
                 isLoadingPrinterMapping = false
             }
         }
+    }
+
+    fun setToolheadCount(context: Context, count: Int) {
+        val clamped = count.coerceIn(1, 12)
+        toolheadCount = clamped
+        AppSettingsStore.saveToolheadCount(context, clamped)
     }
 
     fun setShowLotNumber(context: Context, value: Boolean) {
@@ -1150,7 +1162,8 @@ class MainViewModel : ViewModel() {
                     toolhead2SpoolId = e1,
                     toolhead3SpoolId = e2,
                     toolhead4SpoolId = e3,
-                    activeSpoolId = activeSpoolId
+                    activeSpoolId = activeSpoolId,
+                    toolheadCount = toolheadCount
                 )) {
                     is PrinterMappingOperationResult.Saved -> {
                         applyPrinterMappingSnapshot(result.snapshot)
@@ -1199,7 +1212,8 @@ class MainViewModel : ViewModel() {
                     baseUrl = normalizeConnectionUrl(url),
                     printerIntegrationMode = printerIntegrationMode,
                     toolheadIndex = toolheadIndex,
-                    spoolId = spoolId
+                    spoolId = spoolId,
+                    toolheadCount = toolheadCount
                 )) {
                     is PrinterMappingOperationResult.Saved -> {
                         applyPrinterMappingSnapshot(result.snapshot)

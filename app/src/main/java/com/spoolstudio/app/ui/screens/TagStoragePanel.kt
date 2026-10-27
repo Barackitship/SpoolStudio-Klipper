@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.spoolstudio.app.data.local.TagStorageSettings
@@ -33,9 +34,9 @@ fun TagStoragePanel(url: String, onChanged: () -> Unit) {
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("NFC / RFID tag storage", style = MaterialTheme.typography.titleSmall)
+        Text("NFC / RFID tag storage", style = MaterialTheme.typography.titleSmall, color = Color.White)
         Text("Native tags take priority. Compatibility mode also writes card_uids for older Paxx12 firmware. Changes apply immediately to this server.",
-            style = MaterialTheme.typography.bodySmall)
+            style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         Row {
             Checkbox(checked = nativeOnly, enabled = !busy && server.isNotBlank(), onCheckedChange = { value ->
                 runOperation {
@@ -46,7 +47,7 @@ fun TagStoragePanel(url: String, onChanged: () -> Unit) {
                     onChanged()
                 }
             })
-            Text("Native tags only (requires compatible printer firmware)", modifier = Modifier.padding(top = 12.dp))
+            Text("Native tags only (requires compatible printer firmware)", color = Color.White, modifier = Modifier.padding(top = 12.dp))
         }
         OutlinedButton(enabled = !busy && server.isNotBlank(), onClick = {
             runOperation {

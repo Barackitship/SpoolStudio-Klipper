@@ -4,16 +4,19 @@ enum class PrinterIntegrationMode(
     val storedValue: String,
     val label: String
 ) {
-    PAXX12_SPOOL_LINK("paxx12_spoollink", "Firmware Spoolman integration");
+    STANDARD_KLIPPER("standard_klipper", "Standard Klipper (Moonraker)"),
+    PAXX12_SPOOL_LINK("paxx12_spoollink", "Legacy Paxx12 / Snapmaker U1");
 
     companion object {
         fun fromStoredValue(value: String?): PrinterIntegrationMode =
-            entries.firstOrNull { it.storedValue == value } ?: PAXX12_SPOOL_LINK
+            entries.firstOrNull { it.storedValue == value } ?: STANDARD_KLIPPER
     }
 }
 
 enum class ResolvedPrinterIntegrationMode(
     val label: String
 ) {
-    PAXX12_SPOOL_LINK("Firmware Spoolman integration")
+    STANDARD_KLIPPER("Standard Klipper"),
+    PAXX12_SPOOL_LINK("Legacy Paxx12 SpoolLink")
 }
+

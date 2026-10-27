@@ -26,7 +26,7 @@ class SpoolFormState(private val defaultMaterial: Material) {
     var bedMinTemp by mutableStateOf(defaultMaterial.defaultBedMinTemp.toString())
     var bedMaxTemp by mutableStateOf(defaultMaterial.defaultBedMaxTemp.toString())
     var lotNr by mutableStateOf("")
-    var comment by mutableStateOf("Created by Spool Studio")
+    var comment by mutableStateOf("Created by Spool Studio KE")
     var remainingWeight by mutableStateOf("")
     var emptySpoolWeight by mutableStateOf("")
     var colorHexInput by mutableStateOf("")
@@ -54,7 +54,7 @@ class SpoolFormState(private val defaultMaterial: Material) {
         bedMinTemp = defaultMaterial.defaultBedMinTemp.toString()
         bedMaxTemp = defaultMaterial.defaultBedMaxTemp.toString()
         lotNr = ""
-        comment = "Created by Spool Studio"
+        comment = "Created by Spool Studio KE"
         remainingWeight = ""
         emptySpoolWeight = ""
         colorHexInput = ""

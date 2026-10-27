@@ -610,7 +610,7 @@ class SpoolmanService(private val baseUrl: String) {
         val response = api.createVendor(
             CreateVendorRequest(
                 name = normalizedName,
-                comment = "Spool Studio",
+                comment = "Spool Studio KE",
                 empty_spool_weight = emptySpoolWeight ?: 180f
             )
         )
@@ -708,7 +708,7 @@ class SpoolmanService(private val baseUrl: String) {
             weight = 1000f,
             spool_weight = spoolWeight,
             price = 0.0f,
-            comment = "Spool Studio",
+            comment = "Spool Studio KE",
             extra = buildFilamentExtra(normalizedVariant, normalizedMaterialModifier)
         )
         val response = api.createFilament(request)
@@ -757,7 +757,7 @@ class SpoolmanService(private val baseUrl: String) {
         request["settings_extruder_temp"] = nozzleTemp
         request["settings_bed_temp"] = bedTemp
         spoolWeight?.let { request["spool_weight"] = it }
-        request["comment"] = "Spool Studio"
+        request["comment"] = "Spool Studio KE"
         existingExtra["variant"] = encodeSpoolmanExtraString(fields.variant)
         if (fields.materialModifier.isBlank()) {
             existingExtra.remove("material_modifier")
@@ -788,7 +788,7 @@ class SpoolmanService(private val baseUrl: String) {
                 lot_nr = lotNr,
                 location = location,
                 remaining_weight = remainingWeight ?: 1000f,
-                comment = comment ?: "Created by Spool Studio",
+                comment = comment ?: "Created by Spool Studio KE",
                 extra = null
             )
         )
@@ -813,7 +813,7 @@ class SpoolmanService(private val baseUrl: String) {
         request["lot_nr"] = lotNr
         location?.let { request["location"] = it }
         remainingWeight?.let { request["remaining_weight"] = it }
-        request["comment"] = comment ?: "Created by Spool Studio"
+        request["comment"] = comment ?: "Created by Spool Studio KE"
 
         val response = api.updateSpool(id, request)
         if (!response.isSuccessful) {

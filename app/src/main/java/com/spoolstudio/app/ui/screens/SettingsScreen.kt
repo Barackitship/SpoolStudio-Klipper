@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -87,6 +88,7 @@ fun SettingsScreen(
     showCommentField: Boolean,
     showEmptySpoolWeight: Boolean,
     printerIntegrationMode: PrinterIntegrationMode,
+    toolheadCount: Int = 1,
     spoolmanSortBy: String,
     snackbarMessage: String,
     showSnackbar: Boolean,
@@ -119,6 +121,7 @@ fun SettingsScreen(
     onClearLegacyFilamentConversions: () -> Unit,
     onConvertLegacyFilaments: (String, Set<Int>) -> Unit,
     onTestMoonrakerConnection: (String) -> Unit,
+    onToolheadCountChanged: (Int) -> Unit = {},
     onSave: (String, String, List<ConnectionProfile>, String, PrinterIntegrationMode, String, String, Boolean) -> Unit,
     spoolmanStatus: String? = null,
     spoolmanError: String? = null,
@@ -211,6 +214,7 @@ fun SettingsScreen(
 
     val sortOptions = listOf(
         "Default (ID)" to "",
+        "Last Used" to "last_used:desc",
         "Color (A-Z)" to "filament.name:asc",
         "Color (Z-A)" to "filament.name:desc",
         "Material (A-Z)" to "filament.material:asc",
@@ -438,6 +442,61 @@ fun SettingsScreen(
                         },
                 )
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Number of Toolheads",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SpoolStudioColors.OnGraphite
+                        )
+                        Text(
+                            text = "Active toolheads (1 to 12)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpoolStudioColors.OnGraphiteMuted
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { onToolheadCountChanged((toolheadCount - 1).coerceAtLeast(1)) },
+                            enabled = toolheadCount > 1,
+                            shape = SpoolStudioShape.Small,
+                            modifier = Modifier.size(36.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        ) {
+                            Text("-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+
+                        Text(
+                            text = "$toolheadCount",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = SpoolStudioColors.GoldSoft,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        OutlinedButton(
+                            onClick = { onToolheadCountChanged((toolheadCount + 1).coerceAtMost(12)) },
+                            enabled = toolheadCount < 12,
+                            shape = SpoolStudioShape.Small,
+                            modifier = Modifier.size(36.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        ) {
+                            Text("+", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
                 SettingsPrimaryButton(
                     text = if (isTestingMoonraker) "Testing..." else "Test Moonraker Connection",
                     enabled = !isTestingMoonraker,
@@ -471,6 +530,29 @@ fun SettingsScreen(
                         detectedModeLabel = moonrakerDetectedModeLabel
                     )
                 }
+            }
+
+            SettingsPanel(title = "Printer Mode") {
+                SettingsSwitchRow(
+                    label = "Snapmaker U1 Mode",
+                    checked = tempPrinterIntegrationMode == PrinterIntegrationMode.PAXX12_SPOOL_LINK,
+                    onCheckedChange = { isU1 ->
+                        tempPrinterIntegrationMode = if (isU1) {
+                            PrinterIntegrationMode.PAXX12_SPOOL_LINK
+                        } else {
+                            PrinterIntegrationMode.STANDARD_KLIPPER
+                        }
+                    }
+                )
+                Text(
+                    text = if (tempPrinterIntegrationMode == PrinterIntegrationMode.PAXX12_SPOOL_LINK) {
+                        "Snapmaker U1 / Paxx12 SpoolLink mode enabled"
+                    } else {
+                        "Standard Klipper mode (Moonraker / Spoolman)"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SpoolStudioColors.OnGraphiteMuted
+                )
             }
 
             SettingsPanel(title = "Display") {
@@ -511,11 +593,11 @@ fun SettingsScreen(
             SettingsPanel(title = "About") {
                 SettingsInfoRow(
                     label = "Version",
-                    value = "Spool Studio v$versionName"
+                    value = "Spool Studio KE v1.0.0"
                 )
 
                 SettingsSecondaryButton(
-                    text = "About Spool Studio",
+                    text = "About Spool Studio KE",
                     onClick = { showAboutDialog = true }
                 )
             }
@@ -1323,7 +1405,7 @@ private fun SettingsAboutDialog(
                 )
 
                 Text(
-                    text = "Spool Studio",
+                    text = "Spool Studio KE",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = SpoolStudioColors.OnGraphite,
@@ -1332,7 +1414,7 @@ private fun SettingsAboutDialog(
                 )
 
                 Text(
-                    text = "Version $versionName",
+                    text = "Spool Studio KE v1.0.0",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = SpoolStudioColors.AccentCyan,
@@ -1343,7 +1425,7 @@ private fun SettingsAboutDialog(
                 HorizontalDivider(color = SpoolStudioColors.GraphiteMuted.copy(alpha = 0.75f))
 
                 Text(
-                    text = "2026 Spool Studio by Hovi",
+                    text = "2026 Spool Studio KE by BarackitShip",
                     style = MaterialTheme.typography.bodyMedium,
                     color = SpoolStudioColors.OnGraphite,
                     textAlign = TextAlign.Center,
@@ -1351,7 +1433,7 @@ private fun SettingsAboutDialog(
                 )
 
                 Text(
-                    text = "Based on SpoolPainter by ni4223.",
+                    text = "Based on Spool Studio by Hovi and SpoolPainter by ni4223.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SpoolStudioColors.OnGraphiteMuted,
                     textAlign = TextAlign.Center,

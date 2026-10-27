@@ -15,10 +15,10 @@ sealed class PrinterMappingOperationResult {
 }
 
 class PrinterMappingUseCase(
-    private val loadMapping: suspend (String, PrinterIntegrationMode) -> PrinterMappingLoadResult =
-        { baseUrl, printerIntegrationMode -> PrinterMappingRepository().load(baseUrl, printerIntegrationMode) },
-    private val saveMapping: suspend (String, PrinterIntegrationMode, Int?, Int?, Int?, Int?, Int?) -> PrinterMappingSnapshot =
-        { baseUrl, printerIntegrationMode, toolhead1, toolhead2, toolhead3, toolhead4, activeSpoolId ->
+    private val loadMapping: suspend (String, PrinterIntegrationMode, Int) -> PrinterMappingLoadResult =
+        { baseUrl, printerIntegrationMode, toolheadCount -> PrinterMappingRepository().load(baseUrl, printerIntegrationMode, toolheadCount) },
+    private val saveMapping: suspend (String, PrinterIntegrationMode, Int?, Int?, Int?, Int?, Int?, Int) -> PrinterMappingSnapshot =
+        { baseUrl, printerIntegrationMode, toolhead1, toolhead2, toolhead3, toolhead4, activeSpoolId, toolheadCount ->
             PrinterMappingRepository().save(
                 baseUrl = baseUrl,
                 toolhead1SpoolId = toolhead1,
@@ -26,25 +26,28 @@ class PrinterMappingUseCase(
                 toolhead3SpoolId = toolhead3,
                 toolhead4SpoolId = toolhead4,
                 activeSpoolId = activeSpoolId,
-                printerIntegrationMode = printerIntegrationMode
+                printerIntegrationMode = printerIntegrationMode,
+                toolheadCount = toolheadCount
             )
         },
-    private val assignToolheadMapping: suspend (String, PrinterIntegrationMode, Int, Int?) -> PrinterMappingSnapshot =
-        { baseUrl, printerIntegrationMode, toolheadIndex, spoolId ->
+    private val assignToolheadMapping: suspend (String, PrinterIntegrationMode, Int, Int?, Int) -> PrinterMappingSnapshot =
+        { baseUrl, printerIntegrationMode, toolheadIndex, spoolId, toolheadCount ->
             PrinterMappingRepository().assignToolhead(
                 baseUrl = baseUrl,
                 toolheadIndex = toolheadIndex,
                 spoolId = spoolId,
-                printerIntegrationMode = printerIntegrationMode
+                printerIntegrationMode = printerIntegrationMode,
+                toolheadCount = toolheadCount
             )
         }
 ) {
     suspend fun load(
         baseUrl: String,
-        printerIntegrationMode: PrinterIntegrationMode
+        printerIntegrationMode: PrinterIntegrationMode,
+        toolheadCount: Int = 1
     ): PrinterMappingOperationResult {
         return try {
-            val result = loadMapping(baseUrl, printerIntegrationMode)
+            val result = loadMapping(baseUrl, printerIntegrationMode, toolheadCount)
             PrinterMappingOperationResult.Loaded(
                 snapshot = result.snapshot,
                 message = printerMappingLoadedMessage(result)
@@ -61,7 +64,8 @@ class PrinterMappingUseCase(
         toolhead2SpoolId: Int?,
         toolhead3SpoolId: Int?,
         toolhead4SpoolId: Int?,
-        activeSpoolId: Int?
+        activeSpoolId: Int?,
+        toolheadCount: Int = 1
     ): PrinterMappingOperationResult {
         return try {
             val snapshot = saveMapping(
@@ -71,7 +75,8 @@ class PrinterMappingUseCase(
                 toolhead2SpoolId,
                 toolhead3SpoolId,
                 toolhead4SpoolId,
-                activeSpoolId
+                activeSpoolId,
+                toolheadCount
             )
             PrinterMappingOperationResult.Saved(
                 snapshot = snapshot,
@@ -86,14 +91,16 @@ class PrinterMappingUseCase(
         baseUrl: String,
         printerIntegrationMode: PrinterIntegrationMode,
         toolheadIndex: Int,
-        spoolId: Int?
+        spoolId: Int?,
+        toolheadCount: Int = 1
     ): PrinterMappingOperationResult {
         return try {
             val snapshot = assignToolheadMapping(
                 baseUrl,
                 printerIntegrationMode,
                 toolheadIndex,
-                spoolId
+                spoolId,
+                toolheadCount
             )
             val target = spoolId?.let { "spool ID #$it" } ?: "no spool"
             PrinterMappingOperationResult.Saved(

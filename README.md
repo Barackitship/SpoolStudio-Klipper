@@ -1,196 +1,111 @@
-# Spool Studio
+# Spool Studio (Klipper Edition)
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
 ![Kotlin](https://img.shields.io/badge/Kotlin-100%25-blue)
-![Version](https://img.shields.io/badge/Version-3.1.0-cyan)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/georgho)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-Spool Studio is an Android app for managing 3D printer filament spools with Spoolman, NFC/RFID tags, and Snapmaker U1 printer integration.
+Spool Studio (Klipper Edition) is a fork of [GeorgHo's SpoolStudio](https://github.com/GeorgHo/SpoolStudio) adapted for **standard single-toolhead Klipper 3D printers** running Moonraker with the official [Spoolman integration](https://moonraker.readthedocs.io/en/latest/configuration/#spoolman).
 
-Version 3.1.0 adds Spoolman 0.27.0 native NFC/RFID tags while retaining the Paxx12 SpoolLink compatibility workflow. A native tag owner always takes priority over an old `card_uids` entry. The app can convert older Spool Studio tags, write Paxx12-compatible OpenSpool tags, and show or manually adjust the toolhead status reported by the printer.
-
-The previous 3.0 series was tested with **Paxx12 Extended Firmware v1.6.0**. Version 3.1.0 has automated API and regression tests; physical NFC and printer verification is still required.
-
-This project started from the open-source project **SpoolPainter** by ni4223 and has since been heavily extended.
+While the upstream project was tailored specifically for the multi-toolhead Snapmaker U1 with Paxx12 Extended Firmware and custom SpoolLink/AFC macros, this fork streamlines and replaces those proprietary commands with standard Klipper / Moonraker G-code macros and endpoints.
 
 ---
 
-## Support
+## What's Different in this Fork?
 
-If Spool Studio helps you, you can support the project here:
-
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/georgho)
-
----
-
-## Download
-
-[Download the latest Spool Studio release](https://github.com/GeorgHo/SpoolStudio/releases/latest)
-
-If you still use older Paxx12 firmware or the old Spool Studio tag workflow, use the latest v2 release instead:
-
-[Download Spool Studio v2.0.4](https://github.com/GeorgHo/SpoolStudio/releases/tag/v2.0.4)
-
----
-
-## Screenshots
-
-<p align="center">
-  <img src="docs/images/v3_main.png" width="260" alt="Spool Studio v3 main screen"/>
-  <img src="docs/images/v3_toolhead_status.png" width="260" alt="Spool Studio v3 toolhead status"/>
-  <img src="docs/images/v3_settings.png" width="260" alt="Spool Studio v3 settings"/>
-</p>
+- **Standard Moonraker G-Code Macro Support**:
+  - Replaced Paxx12-specific `SET_PRINT_FILAMENT_CONFIG` and `SET_SPOOL_ID LANE=...` commands with standard Klipper/Moonraker commands:
+    - Setting active spool: `SET_ACTIVE_SPOOL SPOOL_ID=<id>`
+    - Clearing active spool: `CLEAR_ACTIVE_SPOOL`
+- **Single Toolhead Workflow**:
+  - Optimized for standard single-toolhead Klipper setups.
+  - Queries active spool state directly via Moonraker's `/server/spoolman/status` and updates the active spool.
+- **Universal Klipper / Moonraker Health Checks**:
+  - Bypassed Snapmaker/Paxx12 firmware version 1.5.0+ and `spoollink` component prerequisites.
+  - Validates connection and readiness via Moonraker's standard `GET /server/spoolman/status` API, falling back to `/printer/info` and standard Klipper `software_version`.
+- **Retained Full NFC / Spoolman Capabilities**:
+  - Native tag support introduced in Spoolman 0.27.0+.
+  - OpenSpool tag reading and writing.
+  - Full spool and filament management synced directly to your Spoolman instance.
 
 ---
 
-## Important for v3
+## Prerequisites for Your Klipper Printer
 
-### Native tags in v3.1
+1. **Moonraker with Spoolman component enabled**:
+   In your `moonraker.conf`:
+   ```ini
+   [spoolman]
+   server: http://<your-spoolman-ip>:7912
+   sync_rate: 5
+   ```
+2. **Klipper Spoolman Macros**:
+   Ensure you have the standard macros configured in your `printer.cfg` (or included macros file):
+   ```gcode
+   [gcode_macro SET_ACTIVE_SPOOL]
+   gcode:
+     {% if params.SPOOL_ID %}
+       {action_call_remote_method(
+          "spoolman_set_active_spool",
+          spool_id=params.SPOOL_ID|int
+       )}
+     {% else %}
+       {action_respond_info("Parameter 'SPOOL_ID' is required")}
+     {% endif %}
 
-- Spoolman 0.27.0 or newer: native tags are read first. By default, new links are also written to `card_uids` for existing Paxx12 firmware.
-- Older Spoolman servers (or compatible servers without `/api/v1/info`): the existing `card_uids` workflow remains available.
-- Settings → Spoolman → **Native tags only** disables the legacy store for the selected server. Enable this only when the printer firmware supports native tags. This setting takes effect immediately and is stored per server URL.
-- **Review legacy tag migration** previews the number of entries, including archived spools. Migration copies links by default. Clearing successfully migrated legacy entries is an explicit option, and can break older firmware's automatic lookup. Duplicate, invalid or conflicting entries remain for review.
-- A native filament tag identifies a product, not a particular spool. Scanning it displays a message instead of selecting a spool automatically.
-- **Manage tag links** lists native and legacy UIDs on the selected spool. Unlink requires confirmation and removes the compatibility mirror as well. **Link scanned UID** can explicitly move a native spool tag from its previous owner; ordinary saves do not silently move native tags.
-- The tag content format is unchanged. OpenTag3D encoding/decoding and external scanner subscriptions are not part of this release.
-
-Spool Studio v3 is built for the new Paxx12 SpoolLink workflow.
-
-- v3 no longer writes legacy Spool Studio / spool-id based tags.
-- The physical NFC tag UID is used as the primary link between tag and Spoolman spool.
-- The UID is stored in Spoolman and used by Paxx12 SpoolLink.
-- Old tags can be detected and converted after confirmation.
-- If you decline conversion, v3 will not write legacy data.
-
-Recommended migration workflow:
-
-1. Install Spool Studio v3.
-2. Check Spoolman and printer integration in Settings.
-3. Read one existing tag.
-4. Convert only one spool first.
-5. Verify the result in Spoolman and the Paxx12 Filament Manager.
-6. Continue converting the remaining spools after a successful test.
-
----
-
-## Highlights
-
-- Paxx12 SpoolLink support for the new 1.5.x firmware workflow
-- Spoolman support for reading, creating, updating, and deleting spools
-- NFC/RFID read and write support for OpenSpool-compatible tags
-- Legacy tag detection and guided conversion
-- Physical NFC card UID storage in Spoolman
-- Material, material modifier, and variant handled as separate fields
-- Guided Spoolman legacy material conversion for older v2 data
-- Checks for the required Paxx12 `SET_SPOOL_ID` command
-- Searchable dropdowns for spools, materials, variants, brands, colors, locations, and spool tare weights
-- Bambu Lab RFID import when a user-provided key is configured
-- Toolhead Status view for printer-reported spool assignments
-- Manual toolhead spool assignment with clear UID warnings
-- Modern dark UI designed for quick spool editing on a phone
+   [gcode_macro CLEAR_ACTIVE_SPOOL]
+   gcode:
+     {action_call_remote_method(
+        "spoolman_set_active_spool",
+        spool_id=None
+     )}
+   ```
 
 ---
 
 ## Quick Start
 
-### 1. Install the App
+### 1. Build or Install the APK
 
-- Download the APK from the v3 release.
-- Install it on your Android device.
-- Enable "Install unknown apps" for your browser or file manager if Android asks for it.
+You can build the debug APK directly with Gradle:
+```bash
+./gradlew :app:assembleDebug
+```
+The resulting APK will be at:
+`app/build/outputs/apk/debug/app-debug.apk`
+
+Transfer and install this APK onto your NFC-capable Android device.
 
 ### 2. Connect Spoolman
 
-- Open **Settings**.
-- Enter your Spoolman URL, for example `http://10.201.0.68:8000`.
-- Tap **Test Spoolman Connection**.
-- Use **Show Spoolman Info** to inspect the connected Spoolman instance.
+- Open **Settings** in Spool Studio.
+- Enter your Spoolman server URL (e.g., `http://192.168.1.100:7912`).
+- Tap **Test Spoolman Connection** to ensure the database is reachable.
 
-Spool Studio can check whether the required Spoolman fields are available and can guide the setup for v3-specific fields.
+### 3. Connect Moonraker (Klipper)
 
-### 3. Connect the Snapmaker U1
-
-- Install a compatible Paxx12 1.5.x firmware build with SpoolLink support.
-- Enable the Spoolman integration in the printer firmware settings.
-- Enter your Moonraker URL in **Settings**.
+- Enter your Moonraker URL in **Settings** (e.g., `http://192.168.1.100:7125`).
 - Tap **Test Moonraker Connection**.
+- The app will verify connectivity against `/server/spoolman/status` and report that Spoolman integration is active.
 
-### 4. Use NFC / OpenSpool Tags
+### 4. Manage Spools & Tags
 
-- Tap **Read RFID** to scan an existing tag.
-- If an old Spool Studio tag is found, the app can offer conversion to the new UID-based workflow.
-- Tap **Write RFID** to store the current spool data on a tag.
-
-### 5. Check Toolhead Status
-
-Use **Toolhead Status** to view the spool data reported by the printer. The dialog can show app-composed labels and SpoolLink-reported data for comparison.
-
-### 6. Optional: Bambu Lab RFID
-
-Bambu Lab RFID support requires a user-provided master key. The key is not included in this project.
+- Tap **Read RFID** to scan OpenSpool / NFC tags on your spools.
+- View and edit filament details, residual weights, colors, and temperature profiles.
+- Set the active spool for your printer; Spool Studio sends `SET_ACTIVE_SPOOL SPOOL_ID=<id>` directly to Klipper via Moonraker.
+- Clear the active spool anytime using `CLEAR_ACTIVE_SPOOL`.
 
 ---
 
-## Features
+## Highlights & Features
 
-### Spoolman
-
-- Load existing spools from Spoolman
-- Create a completely new spool
-- Create a new spool from a selected spool
-- Update spool details
-- Delete a selected spool after confirmation
-- Store NFC card UIDs for Paxx12 SpoolLink
-- Store material modifiers through Spoolman extra fields
-- Use Spoolman catalogs for materials, brands, locations, and known spool weights
-- Display Spoolman server information in Settings
-
-### Filament Data
-
-- Material
-- Material modifier, for example Plus or HS
-- Variant
-- Brand
-- Color, color name, and HEX value
-- Remaining filament weight
-- Optional empty spool weight
-- Optional location, product / lot code, and comment
-- Nozzle and bed temperature ranges
-
-### NFC / RFID
-
-- Read OpenSpool tags
-- Write OpenSpool tags
-- Read and convert legacy Spool Studio tags
-- Link physical tags and Spoolman records through the NFC card UID
-- Keep tag data compatible with the Paxx12 SpoolLink workflow
-
-### Printer Integration
-
-- Check Moonraker reachability
-- Check Paxx12 firmware integration readiness
-- Show current toolhead spool status
-- Compare app labels and SpoolLink-reported data
-- Show clear status and error messages instead of raw dumps
-
-### Bambu Lab RFID
-
-- Read Bambu Lab RFID tag data when a key is configured
-- Apply parsed Bambu Lab material, color, weight, and temperature data to the spool form
-- Keep key handling user-controlled
-
----
-
-## Requirements
-
-- Android device with NFC
-- Android API 21 or newer
-- Spoolman server for the main workflow
-- Paxx12 Extended Firmware 1.5.x with SpoolLink support for the v3 printer workflow
-- Moonraker access to the Snapmaker U1
-- Optional: user-provided Bambu Lab RFID key
+- Direct Moonraker `/printer/gcode/script` integration with standard `SET_ACTIVE_SPOOL` / `CLEAR_ACTIVE_SPOOL`.
+- Queries active spool from `/server/spoolman/status`.
+- NFC/RFID read and write support for OpenSpool-compatible tags.
+- Physical NFC card UID storage in Spoolman (supports native Spoolman 0.27.0+ tags).
+- Spoolman support for creating, editing, and managing filament spools.
+- Bambu Lab RFID import when a user-provided key is configured.
+- Modern dark UI designed for quick spool editing on mobile.
 
 ---
 
@@ -199,38 +114,23 @@ Bambu Lab RFID support requires a user-provided master key. The key is not inclu
 - Kotlin
 - Jetpack Compose
 - Material 3
-- NFC API
-- Coroutines
-- MVVM architecture
-- Spoolman API
-- Moonraker API
+- Android NFC API
+- Kotlin Coroutines & Flow
+- Retrofit / OkHttp
+- Moonraker API & Spoolman API
 
 ---
 
 ## Credits
 
-- Original project: [SpoolPainter by ni4223](https://github.com/ni4223/SpoolPainter)
-- OpenSpool for the open filament tag data format
-- Spoolman for filament spool management
-- paxx12 for the Snapmaker U1 Extended Firmware
-- Moonraker and the Klipper ecosystem
-
-Spool Studio is extended and maintained by Hovi.
+- Original project: [Spool Studio by GeorgHo](https://github.com/GeorgHo/SpoolStudio)
+- Predecessor: [SpoolPainter by ni4223](https://github.com/ni4223/SpoolPainter)
+- [Spoolman by Donkie](https://github.com/Donkie/Spoolman)
+- [Klipper](https://www.klipper3d.org/) & [Moonraker](https://moonraker.readthedocs.io/)
+- [OpenSpool](https://github.com/spoolman/openspool) specification
 
 ---
 
 ## License
 
-This project is based on the original SpoolPainter project by ni4223.
-
-Permission to publish this modified version was granted by the original author.
-
 This project is licensed under the MIT License.
-
----
-
-## Disclaimer
-
-Spool Studio is an independent project and is not affiliated with Snapmaker, Bambu Lab, Spoolman, OpenSpool, Moonraker, Klipper, or the original SpoolPainter developer.
-
-Bambu Lab RFID tags use proprietary encryption and access keys. This project does not provide official keys. Any key usage must be supplied and evaluated by the user.

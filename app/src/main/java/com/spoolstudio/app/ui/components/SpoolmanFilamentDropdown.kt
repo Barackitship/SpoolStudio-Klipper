@@ -468,16 +468,21 @@ private fun SpoolmanDialogSpoolRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(width = 56.dp, height = 60.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .width(56.dp)
+                .heightIn(min = 60.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             SpoolStudioLogo(
                 color = dialogSpoolColor(filament.colorHex),
-                logoSize = 48.dp,
+                logoSize = 36.dp,
                 showTitle = false,
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(top = 1.dp)
             )
+            Spacer(modifier = Modifier.height(2.dp))
+            SpoolRemainingWeightBadge(remainingWeight = filament.remainingWeight)
         }
 
         Spacer(modifier = Modifier.width(10.dp))

@@ -46,18 +46,24 @@ class PrinterMappingRepository(
 ) {
     suspend fun load(
         baseUrl: String,
-        printerIntegrationMode: PrinterIntegrationMode
+        printerIntegrationMode: PrinterIntegrationMode,
+        toolheadCount: Int = 1
     ): PrinterMappingLoadResult {
         val service = serviceFactory(baseUrl)
         ensureSpoolLinkStatusReadable(service)
-        val toolheadStatuses = service.getSpoolLinkToolheadStatuses()
+        val toolheadStatuses = service.getSpoolLinkToolheadStatuses(toolheadCount)
+        val activeSpoolId = runCatching { service.getActiveSpoolId() }.getOrNull()
+        val resolvedMode = when (printerIntegrationMode) {
+            PrinterIntegrationMode.STANDARD_KLIPPER -> ResolvedPrinterIntegrationMode.STANDARD_KLIPPER
+            PrinterIntegrationMode.PAXX12_SPOOL_LINK -> ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+        }
 
         return PrinterMappingLoadResult(
             snapshot = toolheadStatuses.toPrinterMappingSnapshot(
-                activeSpoolId = null,
-                integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+                activeSpoolId = activeSpoolId,
+                integrationMode = resolvedMode
             ),
-            activeSpoolAvailable = false
+            activeSpoolAvailable = activeSpoolId != null
         )
     }
 
@@ -68,20 +74,27 @@ class PrinterMappingRepository(
         toolhead3SpoolId: Int?,
         toolhead4SpoolId: Int?,
         activeSpoolId: Int?,
-        printerIntegrationMode: PrinterIntegrationMode
+        printerIntegrationMode: PrinterIntegrationMode,
+        toolheadCount: Int = 1
     ): PrinterMappingSnapshot {
         val service = serviceFactory(baseUrl)
         ensureSpoolLinkStatusReadable(service)
 
-        service.setSpoolLinkToolSpool(0, toolhead1SpoolId)
-        service.setSpoolLinkToolSpool(1, toolhead2SpoolId)
-        service.setSpoolLinkToolSpool(2, toolhead3SpoolId)
-        service.setSpoolLinkToolSpool(3, toolhead4SpoolId)
+        val targetSpool = activeSpoolId ?: toolhead1SpoolId
+        service.setSpoolLinkToolSpool(0, targetSpool)
+        if (toolhead2SpoolId != null) runCatching { service.setSpoolLinkToolSpool(1, toolhead2SpoolId) }
+        if (toolhead3SpoolId != null) runCatching { service.setSpoolLinkToolSpool(2, toolhead3SpoolId) }
+        if (toolhead4SpoolId != null) runCatching { service.setSpoolLinkToolSpool(3, toolhead4SpoolId) }
 
-        return service.getSpoolLinkToolheadStatuses()
+        val currentActiveSpoolId = runCatching { service.getActiveSpoolId() }.getOrNull()
+        val resolvedMode = when (printerIntegrationMode) {
+            PrinterIntegrationMode.STANDARD_KLIPPER -> ResolvedPrinterIntegrationMode.STANDARD_KLIPPER
+            PrinterIntegrationMode.PAXX12_SPOOL_LINK -> ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+        }
+        return service.getSpoolLinkToolheadStatuses(toolheadCount)
             .toPrinterMappingSnapshot(
-                activeSpoolId = null,
-                integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+                activeSpoolId = currentActiveSpoolId,
+                integrationMode = resolvedMode
             )
     }
 
@@ -89,20 +102,45 @@ class PrinterMappingRepository(
         baseUrl: String,
         toolheadIndex: Int,
         spoolId: Int?,
-        printerIntegrationMode: PrinterIntegrationMode
+        printerIntegrationMode: PrinterIntegrationMode,
+        toolheadCount: Int = 1
     ): PrinterMappingSnapshot {
         val service = serviceFactory(baseUrl)
         ensureSpoolLinkStatusReadable(service)
-        service.setSpoolLinkToolSpool(toolheadIndex, spoolId)
 
-        return service.getSpoolLinkToolheadStatuses()
+        val resolvedMode = when (printerIntegrationMode) {
+            PrinterIntegrationMode.STANDARD_KLIPPER -> ResolvedPrinterIntegrationMode.STANDARD_KLIPPER
+            PrinterIntegrationMode.PAXX12_SPOOL_LINK -> ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+        }
+
+        if (printerIntegrationMode == PrinterIntegrationMode.STANDARD_KLIPPER) {
+            // Use the synchronous REST endpoint so the status is immediately consistent
+            // after the call returns, avoiding the "assignment not applied" false error
+            // that occurs when the async GCode command has not yet propagated to the status API.
+            service.setActiveSpoolIdViaRest(spoolId)
+        } else {
+            // PAXX12 SpoolLink uses the GCode command + polling to verify all toolheads.
+            service.setSpoolLinkToolSpool(toolheadIndex, spoolId)
+        }
+
+        val currentActiveSpoolId = runCatching { service.getActiveSpoolId() }.getOrNull()
+        return service.getSpoolLinkToolheadStatuses(toolheadCount)
             .toPrinterMappingSnapshot(
-                activeSpoolId = null,
-                integrationMode = ResolvedPrinterIntegrationMode.PAXX12_SPOOL_LINK
+                activeSpoolId = currentActiveSpoolId,
+                integrationMode = resolvedMode
             )
     }
 
     private suspend fun ensureSpoolLinkStatusReadable(service: MoonrakerService) {
+        val hasSpoolmanStatus = runCatching {
+            service.getActiveSpoolId()
+            true
+        }.getOrDefault(false)
+
+        if (hasSpoolmanStatus) {
+            return
+        }
+
         val printerInfo = service.getPrinterInfo()
         if (!printerInfo.supportsSpoolLink) {
             val version = printerInfo.displayVersion ?: "unknown"

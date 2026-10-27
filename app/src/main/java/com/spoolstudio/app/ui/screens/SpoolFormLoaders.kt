@@ -44,7 +44,7 @@ fun SpoolFormState.applySpoolSource(
     comment = if (spoolMode == SpoolMode.UPDATE) {
         sourceSpool.comment ?: ""
     } else {
-        "Created by Spool Studio"
+        "Created by Spool Studio KE"
     }
     remainingWeight = formatLoadedRemainingWeight(sourceSpool.remainingWeight)
     emptySpoolWeight = formatLoadedEmptySpoolWeight(sourceSpool.emptySpoolWeight)
