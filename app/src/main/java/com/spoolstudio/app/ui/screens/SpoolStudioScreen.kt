@@ -95,6 +95,7 @@ fun SpoolStudioScreen(
     showLotNumber: Boolean = false,
     showCommentField: Boolean = false,
     showEmptySpoolWeight: Boolean = false,
+    showArchivedSpools: Boolean = false,
     materialModifierFieldEnabled: Boolean = false,
     showMaterialModifierFieldPrompt: Boolean = false,
     isCreatingMaterialModifierField: Boolean = false,
@@ -276,6 +277,7 @@ fun SpoolStudioScreen(
                         showLotNumber = showLotNumber,
                         showCommentField = showCommentField,
                         showEmptySpoolWeight = showEmptySpoolWeight,
+                        showArchivedSpools = showArchivedSpools,
                         materialModifierFieldEnabled = materialModifierFieldEnabled,
                         isRemainingWeightValid = isRemainingWeightValid(),
                         onSpoolSelected = { handleSpoolSelected(it) },
@@ -358,6 +360,7 @@ fun SpoolStudioScreen(
             toolhead3SpoolId = printerTool3SpoolId,
             toolhead4SpoolId = printerTool4SpoolId,
             toolheadStatuses = printerToolheadStatuses,
+            showArchivedSpools = showArchivedSpools,
             onCancel = {
                 onClearPrinterMappingDialogFeedback()
                 showPrinterMappingDialog = false

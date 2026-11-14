@@ -183,6 +183,8 @@ class MainViewModel : ViewModel() {
         private set
     var showEmptySpoolWeight by mutableStateOf(false)
         private set
+    var showArchivedSpools by mutableStateOf(false)
+        private set
     fun refreshSelectedSpool(spoolId: Int) {
         if (spoolmanUrl.isBlank()) return
 
@@ -527,7 +529,8 @@ class MainViewModel : ViewModel() {
         newPrinterIntegrationMode: PrinterIntegrationMode,
         newSort: String,
         newBambuMasterKey: String,
-        newShowCommentField: Boolean
+        newShowCommentField: Boolean,
+        newShowArchivedSpools: Boolean
     ) {
         val settings = buildSettingsSaveState(
             SettingsSaveInput(
@@ -539,9 +542,13 @@ class MainViewModel : ViewModel() {
                 toolheadCount = toolheadCount,
                 spoolmanSortBy = newSort,
                 bambuMasterKey = newBambuMasterKey,
-                showCommentField = newShowCommentField
+                showCommentField = newShowCommentField,
+                showArchivedSpools = newShowArchivedSpools
             )
         )
+        
+        showArchivedSpools = newShowArchivedSpools
+        AppSettingsStore.saveShowArchivedSpools(context, newShowArchivedSpools)
 
         connectionProfiles = settings.connectionProfiles
         activeConnectionProfileId = settings.activeConnectionProfileId
@@ -577,6 +584,7 @@ class MainViewModel : ViewModel() {
         showLotNumber = state.showLotNumber
         showCommentField = state.showCommentField
         showEmptySpoolWeight = state.showEmptySpoolWeight
+        showArchivedSpools = state.showArchivedSpools
         connectionProfiles = state.connectionProfiles
         activeConnectionProfileId = state.activeConnectionProfileId
         spoolmanUrl = state.spoolmanUrl
@@ -1130,6 +1138,11 @@ class MainViewModel : ViewModel() {
     fun setShowEmptySpoolWeight(context: Context, value: Boolean) {
         showEmptySpoolWeight = value
         AppSettingsStore.saveShowEmptySpoolWeight(context, value)
+    }
+
+    fun setShowArchivedSpools(context: Context, value: Boolean) {
+        showArchivedSpools = value
+        AppSettingsStore.saveShowArchivedSpools(context, value)
     }
 
     fun savePrinterMapping(

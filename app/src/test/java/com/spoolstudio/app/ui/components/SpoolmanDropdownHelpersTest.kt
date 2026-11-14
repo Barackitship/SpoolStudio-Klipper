@@ -43,13 +43,43 @@ class SpoolmanDropdownHelpersTest {
         assertEquals(spools, filterSpoolmanDropdownFilaments(spools, ""))
     }
 
+    @Test
+    fun filterSpoolmanDropdownFilamentsHandlesArchivedSpools() {
+        val activePla = testSpool(
+            id = 1,
+            brand = "Generic",
+            spoolmanName = "White",
+            material = "PLA",
+            archived = false
+        )
+        val archivedPetg = testSpool(
+            id = 2,
+            brand = "Generic",
+            spoolmanName = "Black",
+            material = "PETG",
+            archived = true
+        )
+        val spools = listOf(activePla, archivedPetg)
+
+        // When showArchivedSpools = false, archived spools must NOT appear
+        assertEquals(listOf(activePla), filterSpoolmanDropdownFilaments(spools, "", showArchivedSpools = false))
+        assertEquals(emptyList<FilamentSpool>(), filterSpoolmanDropdownFilaments(spools, "Black", showArchivedSpools = false))
+        assertEquals(listOf(activePla), filterSpoolmanDropdownFilaments(spools, "Generic", showArchivedSpools = false))
+
+        // When showArchivedSpools = true, archived spools MUST appear
+        assertEquals(spools, filterSpoolmanDropdownFilaments(spools, "", showArchivedSpools = true))
+        assertEquals(listOf(archivedPetg), filterSpoolmanDropdownFilaments(spools, "Black", showArchivedSpools = true))
+        assertEquals(spools, filterSpoolmanDropdownFilaments(spools, "Generic", showArchivedSpools = true))
+    }
+
     private fun testSpool(
         id: Int,
         brand: String,
         spoolmanName: String,
         material: String,
         location: String? = null,
-        lotNr: String? = null
+        lotNr: String? = null,
+        archived: Boolean = false
     ): FilamentSpool {
         return FilamentSpool(
             id = id,
@@ -63,6 +93,7 @@ class SpoolmanDropdownHelpersTest {
             bedMaxTemp = 65,
             location = location,
             lotNr = lotNr,
+            archived = archived,
             spoolmanName = spoolmanName
         )
     }

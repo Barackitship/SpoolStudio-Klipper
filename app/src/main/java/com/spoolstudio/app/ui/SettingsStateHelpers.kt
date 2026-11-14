@@ -9,7 +9,8 @@ data class SettingsSaveInput(
     val toolheadCount: Int = 1,
     val spoolmanSortBy: String,
     val bambuMasterKey: String,
-    val showCommentField: Boolean
+    val showCommentField: Boolean,
+    val showArchivedSpools: Boolean = false
 )
 
 data class SettingsSaveState(
@@ -21,13 +22,15 @@ data class SettingsSaveState(
     val toolheadCount: Int = 1,
     val spoolmanSortBy: String,
     val bambuMasterKey: String,
-    val showCommentField: Boolean
+    val showCommentField: Boolean,
+    val showArchivedSpools: Boolean = false
 )
 
 data class SettingsLoadState(
     val showLotNumber: Boolean,
     val showCommentField: Boolean,
     val showEmptySpoolWeight: Boolean,
+    val showArchivedSpools: Boolean = false,
     val connectionProfiles: List<ConnectionProfile>,
     val activeConnectionProfileId: String,
     val spoolmanUrl: String,
@@ -44,6 +47,7 @@ fun buildSettingsLoadState(settings: AppSettings): SettingsLoadState =
         showLotNumber = settings.showLotNumber,
         showCommentField = settings.showCommentField,
         showEmptySpoolWeight = settings.showEmptySpoolWeight,
+        showArchivedSpools = settings.showArchivedSpools,
         connectionProfiles = settings.connectionProfiles,
         activeConnectionProfileId = settings.activeConnectionProfileId,
         spoolmanUrl = settings.spoolmanUrl,
@@ -90,6 +94,7 @@ fun buildSettingsSaveState(input: SettingsSaveInput): SettingsSaveState {
         toolheadCount = input.toolheadCount.coerceIn(1, 12),
         spoolmanSortBy = input.spoolmanSortBy.ifBlank { "" },
         bambuMasterKey = input.bambuMasterKey.trim().uppercase(),
-        showCommentField = input.showCommentField
+        showCommentField = input.showCommentField,
+        showArchivedSpools = input.showArchivedSpools
     )
 }

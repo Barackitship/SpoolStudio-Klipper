@@ -42,8 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spoolstudio.app.domain.models.FilamentSpool
@@ -65,13 +65,14 @@ fun SpoolmanFilamentDropdown(
     showNewPill: Boolean = false,
     onClearAll: (() -> Unit)? = null,
     onOpen: () -> Unit = {},
-    infoButton: (@Composable () -> Unit)? = null
+    infoButton: (@Composable () -> Unit)? = null,
+    showArchivedSpools: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
     var expanded by remember { mutableStateOf(false) }
     var suppressNextToggle by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val filteredFilaments = filterSpoolmanDropdownFilaments(filaments, searchQuery)
+    val filteredFilaments = filterSpoolmanDropdownFilaments(filaments, searchQuery, showArchivedSpools)
     LaunchedEffect(expanded) {
         if (expanded) {
             searchQuery = ""
@@ -99,9 +100,14 @@ fun SpoolmanFilamentDropdown(
             isLoading = isLoading,
             expanded = expanded,
             searchQuery = searchQuery,
+            showArchivedSpools = showArchivedSpools,
             onExpandedChange = { shouldExpand ->
-                if (shouldExpand && !expanded) {
-                    onOpen()
+                if (suppressNextToggle) {
+                    suppressNextToggle = false
+                } else {
+                    if (shouldExpand) {
+                        onOpen()
+                    }
                 }
                 expanded = shouldExpand && filaments.isNotEmpty() && !isLoading
             },
@@ -227,7 +233,7 @@ fun SpoolmanFilamentDropdown(
             SearchableDropdownDialog(
                 title = "Select from Spoolman",
                 searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
+                onSearchQueryChange = { searchQuery = it.take(60) },
                 items = filteredFilaments,
                 itemLabel = ::spoolmanDropdownListLabel,
                 onItemSelected = { filament ->
@@ -246,7 +252,8 @@ fun SpoolmanFilamentDropdown(
                             onFilamentSelected(filament)
                             focusManager.clearFocus()
                             expanded = false
-                        }
+                        },
+                        isArchived = filament.archived
                     )
                 },
                 topContent = {
@@ -278,6 +285,7 @@ private fun DarkSpoolmanDropdown(
     isLoading: Boolean,
     expanded: Boolean,
     searchQuery: String,
+    showArchivedSpools: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onFilamentSelected: (FilamentSpool?) -> Unit,
@@ -370,7 +378,8 @@ private fun DarkSpoolmanDropdown(
                             onFilamentSelected(filament)
                             focusManager.clearFocus()
                             onExpandedChange(false)
-                        }
+                        },
+                        isArchived = filament.archived
                     )
                 },
                 topContent = {
@@ -441,7 +450,8 @@ private fun SelectorPill(
 @Composable
 private fun SpoolmanDialogSpoolRow(
     filament: FilamentSpool,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isArchived: Boolean = filament.archived
 ) {
     val materialParts = listOf(
         filament.brand,
@@ -453,6 +463,24 @@ private fun SpoolmanDialogSpoolRow(
     val title = filament.spoolmanName?.takeIf(String::isNotBlank) ?: filament.displayName
     val subtitle = materialParts.joinToString(" / ")
     val idText = filament.id?.let { "ID #$it" } ?: "No ID"
+
+    val contentColor = if (isArchived) {
+        SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.6f)
+    } else {
+        SpoolStudioColors.OnGraphite
+    }
+
+    val subtitleColor = if (isArchived) {
+        SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.6f)
+    } else {
+        SpoolStudioColors.OnGraphiteMuted
+    }
+
+    val style = if (isArchived) {
+        MaterialTheme.typography.bodySmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+    } else {
+        MaterialTheme.typography.bodySmall
+    }
 
     Row(
         modifier = Modifier
@@ -495,14 +523,14 @@ private fun SpoolmanDialogSpoolRow(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = SpoolStudioColors.OnGraphite,
+                color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = SpoolStudioColors.OnGraphiteMuted,
+                style = style,
+                color = subtitleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -525,7 +553,7 @@ private fun SpoolmanDialogSpoolRow(
                 text = idText,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = SpoolStudioColors.OnGraphite,
+                color = contentColor,
                 maxLines = 1
             )
         }

@@ -110,7 +110,7 @@ fun MainScreenContent(
             moonrakerStatus = viewModel.moonrakerStatus,
             moonrakerError = viewModel.moonrakerError,
             isTestingMoonraker = viewModel.isTestingMoonraker,
-            onSave = { newUrl, newMoonrakerUrl, newConnectionProfiles, newActiveConnectionProfileId, newPrinterIntegrationMode, newSort, newBambuKey, newShowCommentField ->
+            onSave = { newUrl, newMoonrakerUrl, newConnectionProfiles, newActiveConnectionProfileId, newPrinterIntegrationMode, newSort, newBambuKey, newShowCommentField, newShowArchivedSpools ->
                 viewModel.handleSettingsSave(
                     context,
                     newUrl,
@@ -120,7 +120,8 @@ fun MainScreenContent(
                     newPrinterIntegrationMode,
                     newSort,
                     newBambuKey,
-                    newShowCommentField
+                    newShowCommentField,
+                    newShowArchivedSpools
                 )
             },
             showLotNumber = viewModel.showLotNumber,
@@ -129,6 +130,10 @@ fun MainScreenContent(
             },
             onShowEmptySpoolWeightChanged = { value ->
                 viewModel.setShowEmptySpoolWeight(context, value)
+            },
+            showArchivedSpools = viewModel.showArchivedSpools,
+            onShowArchivedSpoolsChanged = { value ->
+                viewModel.setShowArchivedSpools(context, value)
             },
             onBack = { viewModel.hideSettings() }
         )
@@ -188,6 +193,7 @@ fun MainScreenContent(
             showLotNumber = viewModel.showLotNumber,
             showCommentField = viewModel.showCommentField,
             showEmptySpoolWeight = viewModel.showEmptySpoolWeight,
+            showArchivedSpools = viewModel.showArchivedSpools,
             materialModifierFieldEnabled = viewModel.materialModifierFieldEnabled,
             showMaterialModifierFieldPrompt = viewModel.showMaterialModifierFieldPrompt,
             isCreatingMaterialModifierField = viewModel.isCreatingMaterialModifierField,

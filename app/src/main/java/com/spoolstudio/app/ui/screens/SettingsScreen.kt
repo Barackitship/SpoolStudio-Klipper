@@ -122,7 +122,7 @@ fun SettingsScreen(
     onConvertLegacyFilaments: (String, Set<Int>) -> Unit,
     onTestMoonrakerConnection: (String) -> Unit,
     onToolheadCountChanged: (Int) -> Unit = {},
-    onSave: (String, String, List<ConnectionProfile>, String, PrinterIntegrationMode, String, String, Boolean) -> Unit,
+    onSave: (String, String, List<ConnectionProfile>, String, PrinterIntegrationMode, String, String, Boolean, Boolean) -> Unit,
     spoolmanStatus: String? = null,
     spoolmanError: String? = null,
     moonrakerStatus: String? = null,
@@ -134,6 +134,8 @@ fun SettingsScreen(
     showLotNumber: Boolean,
     onShowLotNumberChanged: (Boolean) -> Unit,
     onShowEmptySpoolWeightChanged: (Boolean) -> Unit,
+    showArchivedSpools: Boolean,
+    onShowArchivedSpoolsChanged: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     val savedProfiles = remember(connectionProfiles, spoolmanUrl, moonrakerUrl) {
@@ -573,6 +575,12 @@ fun SettingsScreen(
                     checked = showEmptySpoolWeight,
                     onCheckedChange = onShowEmptySpoolWeightChanged
                 )
+
+                SettingsSwitchRow(
+                    label = "Show Archived Spools",
+                    checked = showArchivedSpools,
+                    onCheckedChange = onShowArchivedSpoolsChanged
+                )
             }
 
             SettingsPanel(title = "Bambu Lab") {
@@ -593,7 +601,7 @@ fun SettingsScreen(
             SettingsPanel(title = "About") {
                 SettingsInfoRow(
                     label = "Version",
-                    value = "Spool Studio KE v1.0.0"
+                    value = "Spool Studio KE v1.1.0"
                 )
 
                 SettingsSecondaryButton(
@@ -619,7 +627,8 @@ fun SettingsScreen(
                             tempPrinterIntegrationMode,
                             normalizeSettingsSort(tempSort),
                             tempBambuKey,
-                            tempShowCommentField
+                            tempShowCommentField,
+                            showArchivedSpools
                         )
                     },
                     modifier = Modifier.width(132.dp)

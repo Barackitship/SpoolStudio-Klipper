@@ -1,0 +1,1 @@
+Always use the write_to_file tool when modifying code files. Do not generate search_replace or apply_diff blocks.

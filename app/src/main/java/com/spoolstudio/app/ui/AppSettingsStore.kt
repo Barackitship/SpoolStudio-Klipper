@@ -23,6 +23,7 @@ data class AppSettings(
     val showLotNumber: Boolean,
     val showCommentField: Boolean,
     val showEmptySpoolWeight: Boolean,
+    val showArchivedSpools: Boolean = false,
     val materialModifierFieldDeclined: Boolean
 )
 
@@ -37,6 +38,7 @@ object AppSettingsStore {
     private const val SHOW_LOT_NUMBER_KEY = "show_lot_number"
     private const val SHOW_COMMENT_FIELD = "show_comment_field"
     private const val SHOW_EMPTY_SPOOL_WEIGHT = "show_empty_spool_weight"
+    private const val SHOW_ARCHIVED_SPOOLS = "show_archived_spools"
     private const val MATERIAL_MODIFIER_FIELD_DECLINED = "material_modifier_field_declined"
     private const val DEFAULT_MOONRAKER_URL = ""
     private const val BAMBU_MASTER_KEY = "bambu_master_key"
@@ -78,6 +80,7 @@ object AppSettingsStore {
             showLotNumber = prefs.getBoolean(SHOW_LOT_NUMBER_KEY, false),
             showCommentField = prefs.getBoolean(SHOW_COMMENT_FIELD, false),
             showEmptySpoolWeight = prefs.getBoolean(SHOW_EMPTY_SPOOL_WEIGHT, false),
+            showArchivedSpools = prefs.getBoolean(SHOW_ARCHIVED_SPOOLS, false),
             materialModifierFieldDeclined = prefs.getBoolean(MATERIAL_MODIFIER_FIELD_DECLINED, false)
         )
     }
@@ -141,6 +144,13 @@ object AppSettingsStore {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(SHOW_EMPTY_SPOOL_WEIGHT, value)
+            .apply()
+    }
+
+    fun saveShowArchivedSpools(context: Context, value: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(SHOW_ARCHIVED_SPOOLS, value)
             .apply()
     }
 

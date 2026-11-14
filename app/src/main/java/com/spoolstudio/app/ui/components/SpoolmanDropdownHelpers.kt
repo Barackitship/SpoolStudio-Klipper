@@ -30,13 +30,17 @@ fun spoolmanDropdownListLabel(filament: FilamentSpool): String {
 
 fun filterSpoolmanDropdownFilaments(
     filaments: List<FilamentSpool>,
-    searchQuery: String
+    searchQuery: String,
+    showArchivedSpools: Boolean = false
 ): List<FilamentSpool> {
     val query = searchQuery.trim()
-    if (query.isBlank()) return filaments
+    if (query.isBlank()) {
+        return if (showArchivedSpools) filaments else filaments.filterNot { it.archived }
+    }
 
     return filaments.filter { filament ->
-        listOf(
+        val isArchived = filament.archived
+        val matchesQuery = listOf(
             filament.id?.toString().orEmpty(),
             filament.brand,
             filament.spoolmanName.orEmpty(),
@@ -50,6 +54,8 @@ fun filterSpoolmanDropdownFilaments(
         ).any { value ->
             value.contains(query, ignoreCase = true)
         }
+
+        matchesQuery && (!isArchived || showArchivedSpools)
     }
 }
 

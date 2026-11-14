@@ -79,6 +79,7 @@ fun PrinterMappingDialogHost(
     toolhead3SpoolId: Int?,
     toolhead4SpoolId: Int?,
     toolheadStatuses: List<PrinterToolheadLiveStatus>,
+    showArchivedSpools: Boolean = false,
     onCancel: () -> Unit,
     onLoadCurrentPrinterMapping: () -> Unit,
     onAssignPrinterToolhead: (Int, Int?) -> Unit
@@ -100,6 +101,7 @@ fun PrinterMappingDialogHost(
         toolhead3SpoolId = toolhead3SpoolId,
         toolhead4SpoolId = toolhead4SpoolId,
         toolheadStatuses = toolheadStatuses,
+        showArchivedSpools = showArchivedSpools,
         onCancel = onCancel,
         onLoadCurrentPrinterMapping = onLoadCurrentPrinterMapping,
         onAssignPrinterToolhead = onAssignPrinterToolhead
@@ -111,6 +113,7 @@ fun PrinterMappingDialog(
     spools: List<FilamentSpool>,
     currentSpool: FilamentSpool? = null,
     toolheadCount: Int = 1,
+    showArchivedSpools: Boolean = false,
     isMoonrakerReachable: Boolean,
     isLoadingPrinterMapping: Boolean,
     printerIntegrationMode: PrinterIntegrationMode = PrinterIntegrationMode.STANDARD_KLIPPER,
@@ -335,6 +338,7 @@ fun PrinterMappingDialog(
                 spools = spools,
                 currentSpool = currentSpool,
                 searchQuery = assignSearchQuery,
+                showArchivedSpools = showArchivedSpools,
                 onSearchQueryChange = { assignSearchQuery = it },
                 onDismiss = { assigningToolheadIndex = null },
                 onSpoolSelected = { spoolId ->
@@ -352,12 +356,14 @@ private data class ToolheadDialogRow(
     val liveStatus: PrinterToolheadLiveStatus?
 )
 
+
 @Composable
 private fun AssignToolheadSpoolDialog(
     toolheadLabel: String,
     spools: List<FilamentSpool>,
     currentSpool: FilamentSpool? = null,
     searchQuery: String,
+    showArchivedSpools: Boolean = false,
     onSearchQueryChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onSpoolSelected: (Int?) -> Unit
@@ -368,7 +374,7 @@ private fun AssignToolheadSpoolDialog(
             .thenBy { it.spoolmanName.orEmpty().lowercase() }
         )
     }
-    val filteredSpools = filterSpoolmanDropdownFilaments(assignableSpools, searchQuery)
+    val filteredSpools = filterSpoolmanDropdownFilaments(assignableSpools, searchQuery, showArchivedSpools)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -437,6 +443,7 @@ private fun AssignToolheadSpoolDialog(
                             warningText = "Current active spool in app",
                             accentColor = resolveSpoolColor(active.colorHex),
                             remainingWeight = active.remainingWeight,
+                            isArchived = active.archived,
                             onClick = { onSpoolSelected(active.id) }
                         )
                     }
@@ -573,6 +580,7 @@ private fun AssignToolheadSpoolDialog(
                                     warningText = warningText,
                                     accentColor = resolveSpoolColor(spool.colorHex),
                                     remainingWeight = spool.remainingWeight,
+                                    isArchived = spool.archived,
                                     onClick = { onSpoolSelected(spool.id) }
                                 )
                             }
@@ -592,8 +600,27 @@ private fun AssignSpoolRow(
     warningText: String? = null,
     accentColor: Color,
     remainingWeight: Float? = null,
+    isArchived: Boolean = false,
     onClick: () -> Unit
 ) {
+    val contentColor = if (isArchived) {
+        SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.6f)
+    } else {
+        SpoolStudioColors.OnGraphite
+    }
+
+    val subtitleColor = if (isArchived) {
+        SpoolStudioColors.OnGraphiteMuted.copy(alpha = 0.6f)
+    } else {
+        SpoolStudioColors.OnGraphiteMuted
+    }
+
+    val style = if (isArchived) {
+        MaterialTheme.typography.bodySmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+    } else {
+        MaterialTheme.typography.bodySmall
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -635,14 +662,14 @@ private fun AssignSpoolRow(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = SpoolStudioColors.OnGraphite,
+                color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = SpoolStudioColors.OnGraphiteMuted,
+                style = style,
+                color = subtitleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -650,7 +677,7 @@ private fun AssignSpoolRow(
                 Text(
                     text = warningText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SpoolStudioColors.GoldSoft,
+                    color = if (isArchived) SpoolStudioColors.GoldSoft.copy(alpha = 0.6f) else SpoolStudioColors.GoldSoft,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -674,7 +701,8 @@ private fun AssignSpoolRow(
                 text = idText,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = SpoolStudioColors.OnGraphite
+                color = contentColor,
+                maxLines = 1
             )
         }
     }

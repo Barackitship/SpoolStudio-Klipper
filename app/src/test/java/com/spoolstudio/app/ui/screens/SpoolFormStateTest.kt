@@ -187,6 +187,6 @@ class SpoolFormStateTest {
         assertEquals("", form.colorName)
         assertEquals("", form.remainingWeight)
         assertEquals("", form.location)
-        assertEquals("Created by Spool Studio", form.comment)
+        assertEquals("Created by Spool Studio KE", form.comment)
     }
 }
